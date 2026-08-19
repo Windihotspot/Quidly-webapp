@@ -1,4 +1,5 @@
-import Login from '@/views/Login.vue'
+import Dashboard from '@/views/Dashboard.vue'
+import Onboarding from '@/views/Onboarding.vue'
 import { createRouter, createWebHistory } from 'vue-router'
 
 
@@ -7,23 +8,19 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'login',
-      component: Login
+      name: 'onboarding',
+      component: Onboarding
+    },
+    
+    {
+      path: '/dashboard',
+      name: 'dashboard',
+      component: Dashboard
     }
     
   ]
 })
 
-router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
 
-  const isAuthenticated = !!authStore.token
-
-  if (to.meta.requiresAuth && !isAuthenticated) {
-    return next('/login')
-  }
-
-  next()
-})
 
 export default router

@@ -105,9 +105,7 @@ const currentYear = new Date().getFullYear()
     <div class="relative flex mx-auto my-auto flex-col justify-between px-6 sm:px-10 lg:px-16 py-8 lg:py-12 overflow-hidden">
       <!-- Logo -->
       <div>
-        <span class="text-2xl font-extrabold tracking-tight">
-          <span class="text-green-600">quid</span><span class="text-blue-500">ly</span><span class="text-orange-400">°</span>
-        </span>
+        <img src="../assets/images/quidly-logo.png" class="w-20 h-30" alt="">
       </div>
 
       <!-- Hero content -->
@@ -222,15 +220,7 @@ const currentYear = new Date().getFullYear()
               </v-text-field>
             </div>
 
-            <div class="flex items-center">
-              <v-checkbox
-                v-model="keepSignedIn"
-                label="Keep me signed in"
-                density="compact"
-                hide-details
-                color="green"
-              />
-            </div>
+            
 
             <p v-if="signinError" class="text-sm text-red-600">{{ signinError }}</p>
 

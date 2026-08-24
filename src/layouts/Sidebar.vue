@@ -1,86 +1,95 @@
 <template>
   <div class="dash-sidebar">
-    <ul class="dash-menu">
-      <!-- Main Menu Items -->
-      <li
-        v-for="item in menuItems"
-        :key="item.nav"
-        :class="{ active: isActive(item) }"
-        @click="navigateTo(item)"
-      >
-        <span class="icon-badge">
-          <i :class="item.icon"></i>
-        </span>
-        {{ item.label }}
-        <i v-if="item.hasChildren" class="mdi mdi-chevron-right item-chevron"></i>
-      </li>
-
-      <!-- Account & Support Items -->
-      <template v-for="item in accountItems" :key="item.nav">
+     <div class="sidebar-logo">
+      <!-- Your logo image or text here -->
+      <img src="@/assets/images/quidly-logo.png" alt="Logo" class="logo-image" />
+      <!-- or use text: -->
+      <!-- <h2 class="logo-text">Your App</h2> -->
+    </div>
+    <ul class="dash-menu mt-8">
+      <!-- Main Menu -->
+      <template v-for="item in menuItems" :key="item.nav">
+        <!-- Parent Menu Item -->
         <li
-          :class="{ active: isActive(item), 'support-open': item.nav === 'support' && supportOpen }"
-          @click="navigateTo(item)"
+          :class="{
+            active: isActive(item),
+            'menu-open': openMenus[item.nav]
+          }"
+          @click="handleMenuClick(item)"
         >
           <span class="icon-badge">
             <i :class="item.icon"></i>
           </span>
-          {{ item.label }}
+
+          <span>{{ item.label }}</span>
+
           <i
-            v-if="item.nav === 'support'"
-            class="mdi mdi-chevron-down support-chevron"
-            :class="{ rotated: supportOpen }"
+            v-if="item.children?.length"
+            class="mdi mdi-chevron-down item-chevron"
+            :class="{ rotated: openMenus[item.nav] }"
           ></i>
         </li>
 
-        <!-- Support Submenu -->
+        <!-- Dropdown Submenu -->
         <transition name="submenu">
-          <div v-if="item.nav === 'support' && supportOpen" class="support-submenu">
-            <a
-              href="https://wa.me/+2349132378328"
-              target="_blank"
-              rel="noopener"
-              class="submenu-item"
-            >
-              <span class="submenu-icon wa-icon">
-                <i class="mdi mdi-whatsapp"></i>
-              </span>
-              WhatsApp
-            </a>
-            <a href="mailto:support@quidly.ng?subject=Support Request" class="submenu-item">
-              <span class="submenu-icon mail-icon">
-                <i class="mdi mdi-email-outline"></i>
-              </span>
-              Email
-            </a>
+          <div
+            v-if="item.children?.length && openMenus[item.nav]"
+            class="submenu-wrapper"
+          >
+            <div class="submenu">
+              <router-link
+                v-for="child in item.children"
+                :key="child.to"
+                :to="child.to"
+                class="submenu-link"
+                :class="{ active: route.path === child.to }"
+              >
+                {{ child.label }}
+              </router-link>
+            </div>
           </div>
         </transition>
       </template>
 
-      <!-- Divider -->
-      <div class="menu-divider"></div>
+      
 
-      <!-- Sign Out -->
-      <li class="sign-out-item" @click="signOut">
-        <span class="icon-badge">
-          <i class="mdi mdi-logout-variant"></i>
-        </span>
-        Sign Out
-      </li>
+      
+
+     
     </ul>
+
+      <div class="sidebar-user-section">
+      <UserMenu variant="sidebar" />
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
-
+import UserMenu from '@/components/UserMenu.vue'
 const route = useRoute()
 const router = useRouter()
 
 const supportOpen = ref(false)
 
-// Menu configuration — routes updated to match Dashboard / Payments / Transactions / Accounts / Settings / Documentation
+/*
+|--------------------------------------------------------------------------
+| Open Dropdown Menus
+|--------------------------------------------------------------------------
+*/
+const openMenus = reactive<Record<string, boolean>>({
+  payments: false,
+  transactions: false,
+  accounts: false,
+  settings: false,
+})
+
+/*
+|--------------------------------------------------------------------------
+| Menu Items
+|--------------------------------------------------------------------------
+*/
 const menuItems = [
   {
     nav: 'overview',
@@ -88,34 +97,87 @@ const menuItems = [
     icon: 'mdi mdi-view-dashboard-outline',
     to: '/dashboard',
   },
+
   {
     nav: 'payments',
     label: 'Payments',
     icon: 'mdi mdi-arrow-top-right',
     to: '/payments',
-    hasChildren: true,
+    children: [
+      {
+        label: 'Invoices',
+        to: '/payments/invoices',
+      },
+      {
+        label: 'Creditlist',
+        to: '/payments/creditlist',
+      },
+    ],
   },
+
   {
     nav: 'transactions',
     label: 'Transactions',
     icon: 'mdi mdi-format-list-bulleted',
     to: '/transactions',
-    hasChildren: true,
+    children: [
+      {
+        label: 'Transactions',
+        to: '/transactions',
+      },
+      {
+        label: 'Refunds',
+        to: '/transactions/refunds',
+      },
+    ],
   },
+
   {
     nav: 'accounts',
     label: 'Accounts',
     icon: 'mdi mdi-checkbox-blank-circle-outline',
     to: '/accounts',
-    hasChildren: true,
+    children: [
+      {
+        label: 'Sub-accounts',
+        to: '/accounts/sub-accounts',
+      },
+      {
+        label: 'Banks',
+        to: '/accounts/banks',
+      },
+      {
+        label: 'Settlement',
+        to: '/accounts/settlement',
+      },
+    ],
   },
+
   {
     nav: 'settings',
     label: 'Settings',
     icon: 'mdi mdi-cog-outline',
     to: '/settings',
-    hasChildren: true,
+    children: [
+      {
+        label: 'Compliance',
+        to: '/settings/compliance',
+      },
+      {
+        label: 'API-keys',
+        to: '/settings/api-keys',
+      },
+      {
+        label: 'Profile',
+        to: '/settings/profile',
+      },
+      {
+        label: 'Webhook',
+        to: '/settings/webhook',
+      },
+    ],
   },
+
   {
     nav: 'docs',
     label: 'Documentation',
@@ -124,264 +186,334 @@ const menuItems = [
   },
 ]
 
-const accountItems = [
-  {
-    nav: 'support',
-    label: 'Support',
-    icon: 'mdi mdi-help-circle-outline',
-  }
-]
-
-// Check if current route matches menu item
+/*
+|--------------------------------------------------------------------------
+| Check Active Menu
+|--------------------------------------------------------------------------
+*/
 const isActive = (item: any) => {
-  if (item.to) {
-    return route.path === item.to || route.path.startsWith(item.to + '/')
-  }
-  return false
+  if (!item.to) return false
+
+  return (
+    route.path === item.to ||
+    route.path.startsWith(item.to + '/')
+  )
 }
 
-// Navigate to route or toggle submenu
-const navigateTo = (item: any) => {
-  if (item.nav === 'support') {
-    supportOpen.value = !supportOpen.value
+/*
+|--------------------------------------------------------------------------
+| Handle Click
+|--------------------------------------------------------------------------
+*/
+const handleMenuClick = (item: any) => {
+  // If the item has children, toggle dropdown
+  if (item.children?.length) {
+    openMenus[item.nav] = !openMenus[item.nav]
     return
   }
+
+  // Normal navigation
   if (item.to) {
     router.push(item.to)
   }
 }
 
-// Sign out handler
+/*
+|--------------------------------------------------------------------------
+| Sign Out
+|--------------------------------------------------------------------------
+*/
 const signOut = async () => {
-  authStore.logout()
+  // authStore.logout()
   router.push('/')
 }
 </script>
 
 <style scoped>
+/*
+|--------------------------------------------------------------------------
+| Logo Section
+|--------------------------------------------------------------------------
+*/
+.sidebar-logo {
+  flex: 0 0 auto;
+  padding: 12px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.logo-image {
+  height: 40px;
+  width: auto;
+  max-width: 100%;
+}
+
+.logo-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
 .dash-sidebar {
-  width: 260px;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
   padding: 12px 18px 18px;
   background: #fff;
-  border-radius: 18px;
-  max-height: 100vh;
-  overflow-y: auto;
+  box-sizing: border-box;
+
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .dash-menu {
   list-style: none;
   padding: 0;
   margin: 0;
+
+  flex: 1 1 auto;
+  min-height: 0;
+
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
-.dash-menu li {
+.sidebar-user-section {
+  flex: 0 0 auto;
+  margin-top: 0;
+  padding: 12px 0 0;
+  border-top: 1px solid #e5e7eb;
+  background: #fff;
+}
+/*
+|--------------------------------------------------------------------------
+| Main Menu Items
+|--------------------------------------------------------------------------
+*/
+.dash-menu > li {
   position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
-  margin-bottom: 8px;
-  border-radius: 12px;
+  padding: 12px 12px;
+  padding-left: 14px;   /* space for left vertical bar */
+  margin-bottom: 10px;
+  border-radius: 8px;
+  border-left: 3px solid transparent;
   cursor: pointer;
   font-size: 14px;
   font-weight: 500;
   color: #4b5563;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.25s ease;
   user-select: none;
 }
 
-.dash-menu li:hover:not(.active) {
-  background: #f8f9fa;
-  color: #2b3e50;
+.dash-menu > li:hover:not(.active) {
+  background: #f0fdf4;
+  border-left-color: #65a30d;
+  color: #3f6e1f;
 }
 
-/* Active State — recolored from blue to green */
-.dash-menu li.active {
-  background: #eef6df;
+.dash-menu > li:hover:not(.active) .icon-badge i {
+  color: #65a30d;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Active Parent
+|--------------------------------------------------------------------------
+*/
+.dash-menu > li.active {
+  background: #f0fdf4;
+  border-left-color: #65a30d;
   color: #5c8a1f;
   font-weight: 600;
 }
 
-/* Green left accent bar on the active item */
-.dash-menu li.active::before {
-  content: '';
-  position: absolute;
-  left: -18px;
-  top: 6px;
-  bottom: 6px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: #65a30d;
-}
-
-.dash-menu li.active .icon-badge i {
+.dash-menu > li.active .icon-badge i {
   color: #65a30d;
 }
 
-.item-chevron {
-  margin-left: auto;
-  font-size: 16px;
-  color: #c4c9d1;
-}
-
-.dash-menu li.active .item-chevron {
-  color: #8fbf3f;
-}
-
-/* Icon Badge */
+/*
+|--------------------------------------------------------------------------
+| Icon
+|--------------------------------------------------------------------------
+*/
 .icon-badge {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   font-size: 18px;
-  line-height: 1;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .icon-badge i {
   color: #6b7280;
-  transition: color 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Support Chevron */
-.support-chevron {
+/*
+|--------------------------------------------------------------------------
+| Chevron
+|--------------------------------------------------------------------------
+*/
+.item-chevron {
   margin-left: auto;
-  font-size: 18px;
-  color: #9ca3af;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 17px;
+  color: #94a3b8;
+  transition: transform 0.25s ease;
 }
 
-.support-chevron.rotated {
+.item-chevron.rotated {
   transform: rotate(180deg);
 }
 
-.dash-menu li.support-open .support-chevron {
-  color: #65a30d;
+/*
+|--------------------------------------------------------------------------
+| SUBMENU WRAPPER
+
+ This creates space between the left edge
+ and the vertical line.
+|--------------------------------------------------------------------------
+*/
+.submenu-wrapper {
+  /*
+    Parent icon starts around 12px + 24px.
+    This indentation puts the vertical line
+    nicely below the parent item.
+  */
+  margin: 0 0 8px 34px;
+
+  /*
+    Space between the screen/sidebar edge
+    and the vertical line.
+  */
+  padding-left: 14px;
+
+  border-left: 1px solid #d9dde3;
 }
 
-/* Support Submenu */
-.support-submenu {
+/*
+|--------------------------------------------------------------------------
+| Submenu
+|--------------------------------------------------------------------------
+*/
+.submenu {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin: 4px 0 12px 20px;
-  padding: 8px 12px;
-  padding-left: 14px;
-  border-left: 2px solid #e3efd2;
-  background: #f8faf3;
-  border-radius: 10px;
-  overflow: hidden;
+  gap: 2px;
+  padding: 2px 0;
 }
 
-.submenu-item {
+/*
+|--------------------------------------------------------------------------
+| Submenu Links
+|--------------------------------------------------------------------------
+*/
+.submenu-link {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
+
   padding: 9px 12px;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #5f6368;
+
+  color: #64748b;
   text-decoration: none;
-  transition: all 0.2s ease;
+
+  font-size: 12px;
+  font-weight: 500;
+
+  border-radius: 8px;
+
+  transition:
+    background 0.2s ease,
+    color 0.2s ease;
 }
 
-.submenu-item:hover {
-  background: #eef6df;
+.submenu-link:hover {
+  background: #f8f9fa;
+  color: #334155;
+}
+
+.submenu-link.active {
   color: #5c8a1f;
+  font-weight: 600;
 }
 
-.submenu-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 14px;
-  flex-shrink: 0;
-  transition: all 0.2s ease;
+.submenu-link i {
+  font-size: 16px;
 }
 
-/* Brand colors kept as-is (WhatsApp green / mail) */
-.wa-icon {
-  background: #25d366;
-}
-
-.wa-icon:hover {
-  background: #1fa857;
-}
-
-.mail-icon {
-  background: #65a30d;
-}
-
-.mail-icon:hover {
-  opacity: 0.9;
-}
-
-/* Menu Divider */
+/*
+|--------------------------------------------------------------------------
+| Divider
+|--------------------------------------------------------------------------
+*/
 .menu-divider {
   height: 1px;
   background: #e5e7eb;
-  margin: 8px 0 8px -18px;
-  width: calc(100% + 36px);
+  margin: 12px 0;
 }
 
-/* Sign Out Item */
+/*
+|--------------------------------------------------------------------------
+| Sign Out
+|--------------------------------------------------------------------------
+*/
 .sign-out-item {
-  color: #dc2626;
+  color: #dc2626 !important;
 }
 
 .sign-out-item:hover {
-  background: #fef2f2;
-  color: #b91c1c;
+  background: #fef2f2 !important;
+  color: #b91c1c !important;
 }
 
 .sign-out-item .icon-badge i {
   color: #dc2626;
 }
 
-.sign-out-item.active {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
-.sign-out-item.active .icon-badge {
-  background: #fecaca !important;
-}
-
-/* Transitions */
+/*
+|--------------------------------------------------------------------------
+| Dropdown Animation
+|--------------------------------------------------------------------------
+*/
 .submenu-enter-active,
 .submenu-leave-active {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
 }
 
 .submenu-enter-from,
 .submenu-leave-to {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(-6px);
 }
 
-/* Scrollbar Styling */
-.dash-sidebar::-webkit-scrollbar {
-  width: 6px;
+/*
+|--------------------------------------------------------------------------
+| Scrollbar
+|--------------------------------------------------------------------------
+*/
+.dash-menu::-webkit-scrollbar {
+  width: 5px;
 }
 
-.dash-sidebar::-webkit-scrollbar-track {
+.dash-menu::-webkit-scrollbar-track {
   background: transparent;
 }
 
-.dash-sidebar::-webkit-scrollbar-thumb {
+.dash-menu::-webkit-scrollbar-thumb {
   background: #d1d5db;
-  border-radius: 3px;
+  border-radius: 10px;
 }
 
-.dash-sidebar::-webkit-scrollbar-thumb:hover {
+.dash-menu::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
 </style>

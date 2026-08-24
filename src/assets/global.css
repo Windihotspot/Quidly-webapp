@@ -62,7 +62,7 @@ h2,
 h3,
 h4,
 h5 {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   line-height: 1.15;
   font-weight: 700;
 }
@@ -71,7 +71,7 @@ h5 {
 .btn-ghost {
   padding: 9px 20px;
   border-radius: var(--radius-sm);
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 600;
   font-size: 0.875rem;
   text-decoration: none;
@@ -88,7 +88,7 @@ h5 {
 .btn-primary {
   padding: 10px 22px;
   border-radius: var(--radius-sm);
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 0.875rem;
   text-decoration: none;
@@ -169,7 +169,7 @@ h5 {
   margin-bottom: 32px;
 }
 .auth-title {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.6rem;
   font-weight: 800;
   color: var(--text-primary);
@@ -366,7 +366,7 @@ select:focus {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 0.82rem;
   border: 2px solid var(--gray-200);
@@ -432,7 +432,7 @@ select:focus {
   width: 52px;
   height: 58px;
   text-align: center;
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.4rem;
   font-weight: 700;
   border: 1.5px solid var(--gray-200);
@@ -545,7 +545,7 @@ nav.scrolled {
   flex-shrink: 0;
 }
 .dash-logo {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 800;
   font-size: 1.1rem;
   cursor: pointer;
@@ -593,7 +593,7 @@ nav.scrolled {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 0.75rem;
   color: white;
@@ -727,7 +727,7 @@ nav.scrolled {
   color: rgba(255, 255, 255, 0.8);
 }
 .dash-card-value {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.5rem;
   font-weight: 800;
   color: var(--text-primary);
@@ -755,7 +755,7 @@ nav.scrolled {
 
 /* ===================== LOAN APPLICATION PROGRESS ===================== */
 .dash-section-title {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -787,7 +787,7 @@ nav.scrolled {
 .btn-view-details {
   padding: 7px 16px;
   border-radius: 8px;
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.78rem;
   font-weight: 600;
   color: var(--purple);
@@ -899,7 +899,7 @@ nav.scrolled {
   color: var(--text-muted);
 }
 .loan-detail-value {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.92rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -1051,7 +1051,7 @@ nav.scrolled {
   text-align: right;
 }
 .loan-history-amount {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
 }
@@ -1214,7 +1214,7 @@ nav.scrolled {
   gap: 40px;
 }
 .stat-value {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.8rem;
   font-weight: 800;
   color: var(--text-primary);
@@ -1285,7 +1285,7 @@ nav.scrolled {
   color: rgba(255, 255, 255, 0.45);
 }
 .app-name {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   color: white;
@@ -1298,7 +1298,7 @@ nav.scrolled {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 0.72rem;
   color: white;
@@ -1327,7 +1327,7 @@ nav.scrolled {
   margin-bottom: 4px;
 }
 .balance-amount {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.85rem;
   font-weight: 800;
   color: white;
@@ -1368,7 +1368,7 @@ nav.scrolled {
   margin-bottom: 3px;
 }
 .fc-value {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -1419,7 +1419,7 @@ nav.scrolled {
 .btn-white {
   padding: 16px 32px;
   border-radius: var(--radius-md);
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 1rem;
   color: var(--purple);
@@ -1438,7 +1438,7 @@ nav.scrolled {
 .btn-outline-white {
   padding: 16px 32px;
   border-radius: var(--radius-md);
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 600;
   font-size: 1rem;
   color: white;
@@ -1654,7 +1654,7 @@ footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 0.78rem;
   border: 2px solid var(--gray-200);
@@ -1704,7 +1704,7 @@ footer {
   border: 1px solid var(--gray-100);
 }
 .apply-form-title {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.1rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -1729,7 +1729,7 @@ footer {
   margin: 18px 0 10px;
 }
 .loan-amount-num {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 2.4rem;
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -1786,7 +1786,7 @@ footer {
   border: 1.5px solid var(--gray-200);
   text-align: center;
   cursor: pointer;
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-muted);
@@ -1882,7 +1882,7 @@ footer {
 }
 .review-val.highlight {
   color: var(--purple);
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.95rem;
   font-weight: 800;
 }
@@ -1906,7 +1906,7 @@ footer {
   margin-bottom: 4px;
 }
 .lsb-value {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.1rem;
   font-weight: 800;
   color: white;
@@ -2003,7 +2003,7 @@ footer {
 }
 
 .offer-hero-title {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.45rem;
   font-weight: 800;
   color: var(--text-primary);
@@ -2091,7 +2091,7 @@ footer {
   color: var(--purple);
 }
 .oab-amount {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.3rem;
   font-weight: 800;
   color: var(--text-primary);
@@ -2184,7 +2184,7 @@ footer {
   margin-bottom: 3px;
 }
 .otc-val {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -2239,7 +2239,7 @@ footer {
 }
 .offer-fee-row.total-row .offer-fee-val {
   color: var(--purple);
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.9rem;
 }
 
@@ -2268,7 +2268,7 @@ footer {
   font-weight: 700;
 }
 .offer-timer {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.85rem;
   font-weight: 700;
   color: var(--red);
@@ -2286,7 +2286,7 @@ footer {
   flex: 1;
   padding: 15px 20px;
   border-radius: var(--radius-md);
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 0.95rem;
   color: white;
@@ -2307,7 +2307,7 @@ footer {
 .btn-decline-offer {
   padding: 15px 22px;
   border-radius: var(--radius-md);
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 600;
   font-size: 0.88rem;
   color: var(--red);
@@ -2438,7 +2438,7 @@ footer {
   color: var(--red);
 }
 .decline-modal-title {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.15rem;
   font-weight: 800;
   color: var(--text-primary);
@@ -2502,7 +2502,7 @@ footer {
   flex: 1;
   padding: 12px;
   border-radius: var(--radius-sm);
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 600;
   font-size: 0.88rem;
   color: var(--text-secondary);
@@ -2518,7 +2518,7 @@ footer {
   flex: 1;
   padding: 12px;
   border-radius: var(--radius-sm);
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 0.88rem;
   color: white;
@@ -2575,7 +2575,7 @@ footer {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 800;
   font-size: 1.5rem;
   color: var(--purple);
@@ -2583,7 +2583,7 @@ footer {
   border: 3px solid rgba(255, 255, 255, 0.3);
 }
 .profile-hero-name {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.4rem;
   font-weight: 800;
   color: white;
@@ -2621,7 +2621,7 @@ footer {
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: var(--radius-sm);
   color: white;
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 600;
   font-size: 0.83rem;
   cursor: pointer;
@@ -2649,7 +2649,7 @@ footer {
   text-align: center;
 }
 .profile-stat-val {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.3rem;
   font-weight: 800;
   color: var(--text-primary);
@@ -2676,7 +2676,7 @@ footer {
   margin-bottom: 20px;
 }
 .profile-section-name {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -2845,7 +2845,7 @@ footer {
 .btn-danger-outline {
   padding: 9px 18px;
   border-radius: var(--radius-sm);
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 600;
   font-size: 0.83rem;
   color: var(--red);
@@ -2919,7 +2919,7 @@ footer {
   margin-bottom: 5px;
 }
 .repay-stat-val {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.35rem;
   font-weight: 800;
   color: var(--text-primary);
@@ -2971,7 +2971,7 @@ footer {
   color: white;
 }
 .overdue-banner-text h3 {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   color: white;
@@ -2991,7 +2991,7 @@ footer {
   padding: 10px 20px;
   background: white;
   color: #991b1b;
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 0.83rem;
   border: none;
@@ -3047,7 +3047,7 @@ footer {
   gap: 12px;
 }
 .schedule-card-title {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-primary);
@@ -3147,7 +3147,7 @@ footer {
 }
 
 .inst-num {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 0.85rem;
   color: var(--text-muted);
@@ -3242,7 +3242,7 @@ footer {
 .btn-row-pay {
   padding: 6px 16px;
   border-radius: 8px;
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-weight: 700;
   font-size: 0.75rem;
   background: var(--grad);
@@ -3304,7 +3304,7 @@ footer {
   background: var(--gray-200);
 }
 .modal-title {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 1.2rem;
   font-weight: 800;
   color: var(--text-primary);
@@ -3329,7 +3329,7 @@ footer {
   margin-bottom: 6px;
 }
 .modal-amount-val {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 2rem;
   font-weight: 800;
   letter-spacing: -0.04em;
@@ -3498,7 +3498,7 @@ footer {
   margin-top: 2px;
 }
 .al-amount {
-  font-family: 'Sora', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 0.9rem;
   font-weight: 700;
   white-space: nowrap;

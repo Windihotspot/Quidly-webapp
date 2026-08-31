@@ -1,5 +1,13 @@
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  login as loginRequest,
+  sendSignupOTP,
+  resendSignupOTP,
+  verifySignupOTP,
+  registerMerchant
+} from '@/services/auth/auth.service'
 
 /**
  * AuthPage.vue
@@ -8,10 +16,19 @@ import { ref, computed } from 'vue'
  * - Right column: auth card (Sign in tab / Create account tab)
  * Both columns are equal width on desktop (grid-cols-2), stacked on mobile.
  *
+ * Signup is a 4-step flow, mirroring the legacy Keycloak signup theme:
+ *   1. email        -> sendSignupOTP
+ *   2. otp           -> verifySignupOTP
+ *   3. details        -> registerMerchant (firstname/lastname/password)
+ *   4. success
+ *
  * Deps assumed already configured in the app:
  *  - Tailwind CSS
  *  - Vuetify 3 (createVuetify() registered in main.js)
+ *  - vue-router
  */
+
+const router = useRouter()
 
 // ---------- Tab state ----------
 const activeTab = ref('signin') // 'signin' | 'signup'
@@ -41,15 +58,16 @@ async function handleSignin() {
   }
   signinLoading.value = true
   try {
-    // Replace with real auth call, e.g. await auth.signIn({ email, password })
-    await new Promise((resolve) => setTimeout(resolve, 900))
-    console.log('Sign in', {
+    const result = await loginRequest({
       email: signinEmail.value,
       password: signinPassword.value,
-      keepSignedIn: keepSignedIn.value,
+      keepSignedIn: keepSignedIn.value
     })
-  } catch (err) {
-    signinError.value = 'Unable to sign in. Please check your credentials.'
+    if (result.status === 1) {
+      router.push('/dashboard')
+    } else {
+      signinError.value = result.message || 'Invalid email or password.'
+    }
   } finally {
     signinLoading.value = false
   }
@@ -60,29 +78,178 @@ function handleGoogleSignin() {
   console.log('Continue with Google')
 }
 
-// ---------- Sign up form ----------
+// ---------- Sign up: shared state ----------
+const signupStep = ref('email') // 'email' | 'otp' | 'details' | 'success'
 const signupEmail = ref('')
-const signupLoading = ref(false)
-const signupError = ref('')
-const codeSent = ref(false)
+
+function resetSignup() {
+  signupStep.value = 'email'
+  signupEmail.value = ''
+  emailError.value = ''
+  otp.value = ''
+  otpError.value = ''
+  clearResendTimer()
+  resendCountdown.value = 0
+  firstname.value = ''
+  lastname.value = ''
+  password.value = ''
+  confirmPassword.value = ''
+  detailsErrors.value = {}
+  detailsError.value = ''
+}
+
+// ---------- Step 1: email ----------
+const emailLoading = ref(false)
+const emailError = ref('')
 
 async function handleSendCode() {
-  signupError.value = ''
+  emailError.value = ''
   const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
   if (!emailPattern.test(signupEmail.value)) {
-    signupError.value = 'Please enter a valid email address.'
+    emailError.value = 'Please enter a valid email address.'
     return
   }
-  signupLoading.value = true
+  emailLoading.value = true
   try {
-    // Replace with real call, e.g. await auth.sendVerificationCode(signupEmail.value)
-    await new Promise((resolve) => setTimeout(resolve, 900))
-    codeSent.value = true
-    console.log('Verification code sent to', signupEmail.value)
-  } catch (err) {
-    signupError.value = 'Something went wrong. Please try again.'
+    const result = await sendSignupOTP(signupEmail.value)
+    if (result.status === 1) {
+      otp.value = ''
+      signupStep.value = 'otp'
+      startResendCountdown()
+    } else {
+      emailError.value = result.message || 'Could not send code. Please try again.'
+    }
   } finally {
-    signupLoading.value = false
+    emailLoading.value = false
+  }
+}
+
+// ---------- Step 2: OTP ----------
+const otp = ref('')
+const otpLoading = ref(false)
+const otpError = ref('')
+const resendCountdown = ref(0)
+let resendTimer = null
+
+function startResendCountdown() {
+  resendCountdown.value = 60
+  clearResendTimer()
+  resendTimer = setInterval(() => {
+    resendCountdown.value--
+    if (resendCountdown.value <= 0) clearResendTimer()
+  }, 1000)
+}
+
+function clearResendTimer() {
+  if (resendTimer) {
+    clearInterval(resendTimer)
+    resendTimer = null
+  }
+}
+
+async function handleResendCode() {
+  if (resendCountdown.value > 0) return
+  otp.value = ''
+  otpError.value = ''
+  emailLoading.value = true
+  try {
+    const result = await resendSignupOTP(signupEmail.value)
+    if (result.status === 1) {
+      startResendCountdown()
+    } else {
+      otpError.value = result.message || 'Could not resend code. Please try again.'
+    }
+  } finally {
+    emailLoading.value = false
+  }
+}
+
+function changeEmail() {
+  clearResendTimer()
+  resendCountdown.value = 0
+  otp.value = ''
+  otpError.value = ''
+  signupStep.value = 'email'
+}
+
+async function handleVerifyOtp() {
+  otpError.value = ''
+  if (!otp.value.trim() || otp.value.trim().length < 6) {
+    otpError.value = 'Enter the 6-character code sent to your email.'
+    return
+  }
+  otpLoading.value = true
+  try {
+    const result = await verifySignupOTP(signupEmail.value, otp.value)
+    if (result.status === 1) {
+      clearResendTimer()
+      signupStep.value = 'details'
+    } else if (result.code === 9) {
+      otpError.value = result.message || 'Code expired. Please request a new one.'
+      otp.value = ''
+      resendCountdown.value = 0
+    } else {
+      const attemptsMsg =
+        result.attempts_left != null ? ` ${result.attempts_left} attempt(s) remaining.` : ''
+      otpError.value = (result.message || 'Invalid code.') + attemptsMsg
+    }
+  } finally {
+    otpLoading.value = false
+  }
+}
+
+// ---------- Step 3: account details ----------
+const firstname = ref('')
+const lastname = ref('')
+const password = ref('')
+const confirmPassword = ref('')
+const detailsLoading = ref(false)
+const detailsError = ref('')
+const detailsErrors = ref({})
+
+function validateDetails() {
+  detailsErrors.value = {}
+  let valid = true
+  if (!firstname.value.trim()) {
+    detailsErrors.value.firstname = 'First name is required'
+    valid = false
+  }
+  if (!lastname.value.trim()) {
+    detailsErrors.value.lastname = 'Last name is required'
+    valid = false
+  }
+  if (!password.value) {
+    detailsErrors.value.password = 'Password is required'
+    valid = false
+  } else if (password.value.length < 8) {
+    detailsErrors.value.password = 'Password must be at least 8 characters'
+    valid = false
+  }
+  if (password.value !== confirmPassword.value) {
+    detailsErrors.value.confirmPassword = 'Passwords do not match'
+    valid = false
+  }
+  return valid
+}
+
+async function handleRegister() {
+  detailsError.value = ''
+  if (!validateDetails()) return
+  detailsLoading.value = true
+  try {
+    const result = await registerMerchant({
+      email: signupEmail.value,
+      firstname: firstname.value,
+      lastname: lastname.value,
+      password: password.value
+    })
+    if (result.status === 1) {
+      signupStep.value = 'success'
+    } else {
+      detailsError.value = result.message || 'Registration failed. Please try again.'
+    }
+  } finally {
+    detailsLoading.value = false
   }
 }
 
@@ -91,10 +258,14 @@ const features = [
   { icon: 'mdi-check', label: 'Secure payments' },
   { icon: 'mdi-trending-up', label: 'Business tools' },
   { icon: 'mdi-eye-outline', label: 'Real-time visibility' },
-  { icon: 'mdi-arrow-right', label: 'Easy onboarding' },
+  { icon: 'mdi-arrow-right', label: 'Easy onboarding' }
 ]
 
 const currentYear = new Date().getFullYear()
+
+onBeforeUnmount(() => {
+  clearResendTimer()
+})
 </script>
 
 <template>
@@ -220,7 +391,10 @@ const currentYear = new Date().getFullYear()
               </v-text-field>
             </div>
 
-            
+            <label class="flex items-center gap-2 text-sm text-gray-600">
+              <input v-model="keepSignedIn" type="checkbox" class="rounded border-gray-300" />
+              Keep me signed in
+            </label>
 
             <p v-if="signinError" class="text-sm text-red-600">{{ signinError }}</p>
 
@@ -236,7 +410,17 @@ const currentYear = new Date().getFullYear()
               Sign in
             </v-btn>
 
-            
+            <v-btn
+              type="button"
+              block
+              size="large"
+              rounded="lg"
+              variant="outlined"
+              class="!normal-case !font-bold !text-base"
+              @click="handleGoogleSignin"
+            >
+              Continue with Google
+            </v-btn>
           </form>
 
           <p class="mt-6 text-center text-sm">
@@ -257,6 +441,7 @@ const currentYear = new Date().getFullYear()
         <!-- ---------- CREATE ACCOUNT ---------- -->
         <div v-else class="mt-6">
           <button
+            v-if="signupStep !== 'success'"
             type="button"
             class="text-sm font-semibold text-gray-500 hover:text-gray-700 flex items-center gap-1"
             @click="goToSignin"
@@ -265,69 +450,229 @@ const currentYear = new Date().getFullYear()
             Back to sign in
           </button>
 
-          <h2 class="mt-4 text-2xl sm:text-3xl font-extrabold text-gray-900">Let's get started</h2>
-          <p class="mt-2 text-sm text-gray-500">Enter your email to get started with Quidly.</p>
+          <!-- Step 1: email -->
+          <template v-if="signupStep === 'email'">
+            <h2 class="mt-4 text-2xl sm:text-3xl font-extrabold text-gray-900">Let's get started</h2>
+            <p class="mt-2 text-sm text-gray-500">Enter your email to get started with Quidly.</p>
 
-          <form v-if="!codeSent" class="mt-6 space-y-5" @submit.prevent="handleSendCode">
-            <div>
-              <label class="block text-sm font-semibold text-gray-800 mb-1.5">Email address</label>
-              <v-text-field
-                v-model="signupEmail"
-                type="email"
-                placeholder="you@example.com"
-                variant="outlined"
-                density="comfortable"
+            <form class="mt-6 space-y-5" @submit.prevent="handleSendCode">
+              <div>
+                <label class="block text-sm font-semibold text-gray-800 mb-1.5">Email address</label>
+                <v-text-field
+                  v-model="signupEmail"
+                  type="email"
+                  placeholder="you@example.com"
+                  variant="outlined"
+                  density="comfortable"
+                  rounded="lg"
+                  hide-details
+                  autocomplete="email"
+                />
+              </div>
+
+              <p v-if="emailError" class="text-sm text-red-600">{{ emailError }}</p>
+
+              <v-btn
+                type="submit"
+                block
+                size="large"
                 rounded="lg"
-                hide-details
-                autocomplete="email"
-              />
-            </div>
+                color="green"
+                class="!normal-case !font-bold !text-base"
+                :loading="emailLoading"
+              >
+                Send verification code
+              </v-btn>
+            </form>
+          </template>
 
-            <p v-if="signupError" class="text-sm text-red-600">{{ signupError }}</p>
+          <!-- Step 2: OTP -->
+          <template v-else-if="signupStep === 'otp'">
+            <h2 class="mt-4 text-2xl sm:text-3xl font-extrabold text-gray-900">Check your inbox</h2>
+            <p class="mt-2 text-sm text-gray-500">
+              Enter the 6-character code sent to <span class="font-semibold text-gray-700">{{ signupEmail }}</span>.
+            </p>
 
-            <v-btn
-              type="submit"
-              block
-              size="large"
-              rounded="lg"
-              color="green"
-              class="!normal-case !font-bold !text-base"
-              :loading="signupLoading"
-            >
-              Send verification code
-            </v-btn>
-          </form>
+            <form class="mt-6 space-y-5" @submit.prevent="handleVerifyOtp">
+              <div>
+                <label class="block text-sm font-semibold text-gray-800 mb-1.5">Verification code</label>
+                <v-text-field
+                  v-model="otp"
+                  type="text"
+                  maxlength="6"
+                  placeholder="······"
+                  variant="outlined"
+                  density="comfortable"
+                  rounded="lg"
+                  hide-details
+                  autocomplete="one-time-code"
+                  class="tracking-[0.4em] text-center font-bold"
+                />
+              </div>
 
-          <!-- Confirmation state once code is sent -->
-           <div v-else>
-             <div  class="mt-6 rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
-            We sent a verification code to <span class="font-semibold">{{ signupEmail }}</span>.
-            Check your inbox to continue.
+              <div class="flex items-center justify-between text-sm">
+                <span v-if="resendCountdown > 0" class="text-gray-400">
+                  Resend code in {{ resendCountdown }}s
+                </span>
+                <button
+                  v-else
+                  type="button"
+                  class="font-semibold text-green-600 hover:text-green-700"
+                  @click="handleResendCode"
+                >
+                  Resend code
+                </button>
+                <button type="button" class="font-semibold text-gray-500 hover:text-gray-700" @click="changeEmail">
+                  Change email
+                </button>
+              </div>
 
-            
-          </div>
-           <div>
-              <label class="block text-sm font-semibold text-gray-800 mb-1.5 mt-6">Verification code</label>
-              <v-text-field
-              placeholder="Enter verification code"
-                variant="outlined"
-                density="comfortable"
+              <p v-if="otpError" class="text-sm text-red-600">{{ otpError }}</p>
+
+              <v-btn
+                type="submit"
+                block
+                size="large"
                 rounded="lg"
-                hide-details
-                autocomplete="email"
-              />
-            </div>
-           </div>
-         
+                color="green"
+                class="!normal-case !font-bold !text-base"
+                :loading="otpLoading"
+              >
+                Verify code
+              </v-btn>
+            </form>
+          </template>
 
-          <p class="mt-6 text-center text-sm text-gray-500">
+          <!-- Step 3: account details -->
+          <template v-else-if="signupStep === 'details'">
+            <h2 class="mt-4 text-2xl sm:text-3xl font-extrabold text-gray-900">Create your password</h2>
+            <p class="mt-2 text-sm text-gray-500">Almost done — just a few more details.</p>
+
+            <form class="mt-6 space-y-5" @submit.prevent="handleRegister">
+              <div class="grid grid-cols-2 gap-3">
+                <div>
+                  <label class="block text-sm font-semibold text-gray-800 mb-1.5">First name</label>
+                  <v-text-field
+                    v-model="firstname"
+                    type="text"
+                    placeholder="Jane"
+                    variant="outlined"
+                    density="comfortable"
+                    rounded="lg"
+                    hide-details
+                  />
+                  <span v-if="detailsErrors.firstname" class="text-xs text-red-600">{{ detailsErrors.firstname }}</span>
+                </div>
+                <div>
+                  <label class="block text-sm font-semibold text-gray-800 mb-1.5">Last name</label>
+                  <v-text-field
+                    v-model="lastname"
+                    type="text"
+                    placeholder="Doe"
+                    variant="outlined"
+                    density="comfortable"
+                    rounded="lg"
+                    hide-details
+                  />
+                  <span v-if="detailsErrors.lastname" class="text-xs text-red-600">{{ detailsErrors.lastname }}</span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-gray-800 mb-1.5">Email address</label>
+                <v-text-field
+                  :model-value="signupEmail"
+                  type="email"
+                  variant="outlined"
+                  density="comfortable"
+                  rounded="lg"
+                  hide-details
+                  readonly
+                  class="opacity-70"
+                >
+                  <template #append-inner>
+                    <span class="text-xs font-semibold text-green-600">Verified</span>
+                  </template>
+                </v-text-field>
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-gray-800 mb-1.5">Password</label>
+                <v-text-field
+                  v-model="password"
+                  type="password"
+                  placeholder="At least 8 characters"
+                  variant="outlined"
+                  density="comfortable"
+                  rounded="lg"
+                  hide-details
+                  autocomplete="new-password"
+                />
+                <span v-if="detailsErrors.password" class="text-xs text-red-600">{{ detailsErrors.password }}</span>
+              </div>
+
+              <div>
+                <label class="block text-sm font-semibold text-gray-800 mb-1.5">Confirm password</label>
+                <v-text-field
+                  v-model="confirmPassword"
+                  type="password"
+                  placeholder="Re-enter your password"
+                  variant="outlined"
+                  density="comfortable"
+                  rounded="lg"
+                  hide-details
+                  autocomplete="new-password"
+                />
+                <span v-if="detailsErrors.confirmPassword" class="text-xs text-red-600">{{ detailsErrors.confirmPassword }}</span>
+              </div>
+
+              <p v-if="detailsError" class="text-sm text-red-600">{{ detailsError }}</p>
+
+              <v-btn
+                type="submit"
+                block
+                size="large"
+                rounded="lg"
+                color="green"
+                class="!normal-case !font-bold !text-base"
+                :loading="detailsLoading"
+              >
+                Create account
+              </v-btn>
+            </form>
+          </template>
+
+          <!-- Step 4: success -->
+          <template v-else-if="signupStep === 'success'">
+            <div class="text-center py-6">
+              <div class="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-green-50 text-green-600 text-2xl font-bold">
+                ✓
+              </div>
+              <h2 class="mt-5 text-2xl sm:text-3xl font-extrabold text-gray-900">Account created!</h2>
+              <p class="mt-2 text-sm text-gray-500">
+                Your Quidly account is ready. Sign in with your new credentials to continue.
+              </p>
+              <v-btn
+                block
+                size="large"
+                rounded="lg"
+                color="green"
+                class="!normal-case !font-bold !text-base mt-6"
+                @click="goToSignin"
+              >
+                Go to sign in
+              </v-btn>
+            </div>
+          </template>
+
+          <p v-if="signupStep !== 'success'" class="mt-6 text-center text-sm text-gray-500">
             Already have an account?
             <button type="button" class="font-semibold text-green-600 hover:text-green-700" @click="goToSignin">
               Sign in
             </button>
           </p>
 
-          <p class="mt-4 text-center text-xs text-gray-400">
+          <p v-if="signupStep !== 'success'" class="mt-4 text-center text-xs text-gray-400">
             By continuing, you agree to Quidly's
             <a href="#" class="font-semibold text-gray-600 hover:text-gray-800">Terms</a>
             and

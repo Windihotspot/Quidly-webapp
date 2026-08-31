@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios'
-import { getTokenWithRefresh, isAuthenticated } from '@/services/keycloak/keycloak.service'
+import { getAccessToken, isLoggedIn, logout } from '@/services/auth/auth.service'
 
 let apiClient: AxiosInstance | null = null
 
@@ -22,17 +22,12 @@ export function initializeApiClient(): AxiosInstance {
 
   // Request interceptor - add auth token
   apiClient.interceptors.request.use(
-    async (config: InternalAxiosRequestConfig) => {
+    (config: InternalAxiosRequestConfig) => {
       // Only add token if user is authenticated
-      if (isAuthenticated()) {
-        try {
-          const token = await getTokenWithRefresh()
-          if (token) {
-            config.headers.Authorization = `Bearer ${token}`
-          }
-        } catch (error) {
-          console.error('Failed to get token for request:', error)
-          return Promise.reject(error)
+      if (isLoggedIn()) {
+        const token = getAccessToken()
+        if (token) {
+          config.headers.Authorization = `Bearer ${token}`
         }
       }
       return config
@@ -48,21 +43,16 @@ export function initializeApiClient(): AxiosInstance {
     async (error: AxiosError) => {
       const config = error.config as InternalAxiosRequestConfig
 
-      // Handle 401 Unauthorized
+      // Handle 401 Unauthorized — local session is invalid/expired.
+      // NOTE: there's no token-refresh endpoint wired up yet (auth.service
+      // only stores what /auth/login returns). If your backend supports
+      // refreshing via the stored refreshToken, that call belongs here,
+      // retrying the original request on success. For now this just
+      // clears the session and sends the user back to sign in.
       if (error.response?.status === 401 && config && !config.headers['X-Retry']) {
         config.headers['X-Retry'] = 'true'
-        
-        try {
-          const token = await getTokenWithRefresh()
-          if (token) {
-            config.headers.Authorization = `Bearer ${token}`
-            return apiClient!(config)
-          }
-        } catch (refreshError) {
-          console.error('Token refresh failed:', refreshError)
-          // Token refresh failed, redirect to login
-          window.location.href = `${import.meta.env.VITE_KEYCLOAK_URL}/realms/${import.meta.env.VITE_KEYCLOAK_REALM}/protocol/openid-connect/logout`
-        }
+        await logout(false) // false = don't call the backend logout endpoint, session is already dead
+        window.location.href = '/auth'
       }
 
       // Handle 403 Forbidden

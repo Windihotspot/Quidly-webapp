@@ -2,17 +2,16 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 import {
-  getKeycloakInstance,
-  getUserInfo,
-  isAuthenticated as isKeycloakAuthenticated
-} from '@/services/keycloak/keycloak.service'
+  isLoggedIn as isLocallyLoggedIn,
+  logout as authServiceLogout
+} from '@/services/auth/auth.service'
 
 import { post } from '@/services/api/api.service'
 
 import type {
   IAppUser,
   IMerchantUser
-} from '@/core/quidlyInterfaces'
+} from '@/types/quidlyInterfaces'
 
 interface ApiResponse<T> {
   status: number
@@ -72,70 +71,42 @@ export const useAuthStore = defineStore(
     }
 
     /**
-     * Verify authentication with Keycloak and backend
+     * Verify authentication on app boot.
+     *
+     * The local access token (from auth.service, set by /auth/login) is
+     * now the source of truth instead of Keycloak. `user`/`merchantUser`
+     * are already rehydrated from localStorage by pinia-plugin-persistedstate
+     * by the time this runs, so if a token exists and we already have a
+     * persisted user, we trust it. If a token exists but there's no
+     * persisted user (e.g. cleared storage, different device), that's
+     * an edge case flagged below rather than guessed at.
+     *
+     * NOTE: if your backend has a "who am I" / "me" endpoint keyed off the
+     * bearer token, that's a better fit here than relying on a persisted
+     * user — ping me with the endpoint and I'll wire it in.
      */
     async function verifyAuth(): Promise<IAppUser | null> {
       try {
         isAuthenticating.value = true
         clearError()
 
-        // Keycloak is the source of truth for authentication
-        if (!isKeycloakAuthenticated()) {
-          console.log('User not authenticated via Keycloak')
-
+        if (!isLocallyLoggedIn()) {
+          console.log('User not authenticated')
           reset()
           return null
         }
 
-        // Get decoded token information
-        const keycloakUser = getUserInfo()
-
-        if (!keycloakUser?.email) {
-          throw new Error('No email found in Keycloak token')
+        // Already have a persisted user for this session — trust it.
+        if (user.value?.email) {
+          isAuthenticated.value = true
+          return user.value
         }
 
-        // Verify user with backend
-        const response = await post<ApiResponse<IAppUser[]>>(
-          '/mdb/procedure/GetUserDetailsByEmailExtended',
-          {
-            p_email: keycloakUser.email
-          }
-        )
-
-        const responseData = response.data
-
-        if (
-          responseData?.status === 1 &&
-          responseData.jsresult &&
-          responseData.jsresult.length > 0
-        ) {
-          const userData = responseData.jsresult[0]
-
-          // Set application user
-          setUser(userData)
-
-          // Create merchant user
-          const merchant: IMerchantUser = {
-            accountid: userData.accountid,
-            quidlyuserid: userData.quidlyuserid,
-            merchantid: userData.merchantids?.[0] || ''
-          }
-
-          setMerchantUser(merchant)
-
-          // Restore previously selected merchant if available
-          const savedMerchantId = localStorage.getItem('activeMerchantId')
-
-          if (savedMerchantId) {
-            merchantUser.value.merchantid = savedMerchantId
-          }
-
-          console.log('✅ Auth verification complete')
-
-          return userData
-        }
-
-        throw new Error('Invalid response from auth service')
+        // Token exists but no persisted user survived (e.g. storage was
+        // partially cleared). Without a "me" endpoint there's no reliable
+        // way to re-fetch who this token belongs to, so treat it as a
+        // stale/invalid session rather than guessing.
+        throw new Error('No local user data available for this session')
       } catch (err) {
         const errorMessage =
           err instanceof Error
@@ -233,13 +204,11 @@ export const useAuthStore = defineStore(
       reset()
 
       try {
-        const keycloak = getKeycloakInstance()
-
-        await keycloak.logout({
-          redirectUri: `${window.location.origin}${import.meta.env.BASE_URL}`
-        })
+        await authServiceLogout()
       } catch (err) {
         console.error('Logout error:', err)
+      } finally {
+        window.location.href = '/auth'
       }
     }
 

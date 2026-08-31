@@ -24,8 +24,9 @@ import { aliases, mdi } from 'vuetify/iconsets/mdi'
 import VueApexCharts from 'vue3-apexcharts'
 import '@fortawesome/fontawesome-free/css/all.css'
 
+import { VueQueryPlugin, QueryClient } from '@tanstack/vue-query'
+
 // Services
-import { initializeKeycloak } from '@/services/keycloak/keycloak.service'
 import { initializeApiClient } from '@/services/api/api.service'
 import { useAuthStore } from '@/stores/auth'
 
@@ -40,16 +41,22 @@ const vuetify = createVuetify({
   }
 })
 
+// Configure Vue Query
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false,
+      retry: 1
+    }
+  }
+})
+
 /**
  * Initialize and mount the application
  */
 async function bootstrapApp() {
   try {
     console.log('🚀 Starting application bootstrap...')
-
-    // Initialize Keycloak first
-    console.log('🔐 Initializing Keycloak...')
-    await initializeKeycloak()
 
     // Initialize API client
     console.log('📡 Initializing API client...')
@@ -70,6 +77,10 @@ async function bootstrapApp() {
     app.use(vuetify)
     app.use(VueApexCharts)
     app.use(ElementPlus)
+
+    // Setup Vue Query — must be registered before App.vue's setup() runs
+    // (it calls useQuery), so this needs to happen before app.mount below.
+    app.use(VueQueryPlugin, { queryClient })
 
     // Verify authentication with backend
     console.log('🔍 Verifying authentication...')

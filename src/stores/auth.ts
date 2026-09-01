@@ -2,16 +2,14 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 
 import {
-  isLoggedIn as isLocallyLoggedIn,
-  logout as authServiceLogout
-} from '@/services/auth/auth.service'
-
+  initializeKeycloak,
+  isAuthenticated as isKeycloakAuthenticated,
+  getToken,
+  getUserInfo
+} from '@/services/keycloak/keycloak.service'
 import { post } from '@/services/api/api.service'
 
-import type {
-  IAppUser,
-  IMerchantUser
-} from '@/types/quidlyInterfaces'
+import type { IAppUser, IMerchantUser } from '@/types/quidlyInterfaces'
 
 interface ApiResponse<T> {
   status: number
@@ -72,57 +70,107 @@ export const useAuthStore = defineStore(
 
     /**
      * Verify authentication on app boot.
-     *
-     * The local access token (from auth.service, set by /auth/login) is
-     * now the source of truth instead of Keycloak. `user`/`merchantUser`
-     * are already rehydrated from localStorage by pinia-plugin-persistedstate
-     * by the time this runs, so if a token exists and we already have a
-     * persisted user, we trust it. If a token exists but there's no
-     * persisted user (e.g. cleared storage, different device), that's
-     * an edge case flagged below rather than guessed at.
-     *
-     * NOTE: if your backend has a "who am I" / "me" endpoint keyed off the
-     * bearer token, that's a better fit here than relying on a persisted
-     * user — ping me with the endpoint and I'll wire it in.
+
      */
-    async function verifyAuth(): Promise<IAppUser | null> {
-      try {
-        isAuthenticating.value = true
-        clearError()
+   async function verifyAuth(): Promise<IAppUser | null> {
+  try {
+    isAuthenticating.value = true
+    clearError()
 
-        if (!isLocallyLoggedIn()) {
-          console.log('User not authenticated')
-          reset()
-          return null
-        }
+    console.log('🔐 Initializing Keycloak...')
 
-        // Already have a persisted user for this session — trust it.
-        if (user.value?.email) {
-          isAuthenticated.value = true
-          return user.value
-        }
+    const kc = await initializeKeycloak()
 
-        // Token exists but no persisted user survived (e.g. storage was
-        // partially cleared). Without a "me" endpoint there's no reliable
-        // way to re-fetch who this token belongs to, so treat it as a
-        // stale/invalid session rather than guessing.
-        throw new Error('No local user data available for this session')
-      } catch (err) {
-        const errorMessage =
-          err instanceof Error
-            ? err.message
-            : 'Authentication verification failed'
-
-        console.error('❌ Auth verification failed:', err)
-
-        reset()
-        setError(errorMessage)
-
-        return null
-      } finally {
-        isAuthenticating.value = false
-      }
+    if (!kc.authenticated || !isKeycloakAuthenticated()) {
+      console.log('ℹ️ User is not authenticated with Keycloak')
+      reset()
+      return null
     }
+
+    console.log('✅ User authenticated with Keycloak')
+
+    const token = getToken()
+
+    if (!token) {
+      throw new Error('Keycloak access token not available')
+    }
+
+    console.log('🔑 Keycloak token available')
+
+    const keycloakUser = getUserInfo()
+
+    console.log('👤 Keycloak user:', keycloakUser)
+
+    if (!keycloakUser?.email) {
+      throw new Error('Email not found in Keycloak token')
+    }
+
+    // Get the actual Quidly user from your backend
+    const response = await post<ApiResponse<IAppUser[]>>(
+      '/mdb/procedure/GetUserDetailsByEmailExtended',
+      {
+        p_email: keycloakUser.email
+      }
+    )
+
+    console.log(
+      '👤 GetUserDetailsByEmailExtended response:',
+      response.data
+    )
+
+    if (
+      response.data?.status !== 1 ||
+      !Array.isArray(response.data.jsresult) ||
+      response.data.jsresult.length === 0
+    ) {
+      throw new Error('Quidly user details not found')
+    }
+
+    const appUser = response.data.jsresult[0]
+
+    // This is the equivalent of your old setAuth()
+    setUser(appUser)
+
+    // Set merchant information
+    if (appUser.accountid && appUser.quidlyuserid) {
+      const merchants = merchantUser.value ?? ({} as IMerchantUser)
+
+      merchants.accountid = appUser.accountid
+      merchants.quidlyuserid = appUser.quidlyuserid
+
+      if (
+        appUser.merchantids &&
+        appUser.merchantids.length > 0
+      ) {
+        merchants.merchantid = appUser.merchantids[0]
+      } else {
+        merchants.merchantid = ''
+      }
+
+      setMerchantUser(merchants)
+    }
+
+    console.log('✅ Quidly user loaded:', appUser)
+
+    return appUser
+
+  } catch (err) {
+    const errorMessage =
+      err instanceof Error
+        ? err.message
+        : 'Authentication verification failed'
+
+    console.error('❌ Auth verification failed:', err)
+
+    reset()
+    setError(errorMessage)
+
+    return null
+
+  } finally {
+    isAuthenticating.value = false
+  }
+}
 
     /**
      * Get linked merchants
@@ -141,19 +189,13 @@ export const useAuthStore = defineStore(
           }
         )
 
-        if (
-          response.data?.status === 1 &&
-          Array.isArray(response.data.jsresult)
-        ) {
+        if (response.data?.status === 1 && Array.isArray(response.data.jsresult)) {
           return response.data.jsresult
         }
 
         throw new Error('Failed to fetch merchants')
       } catch (err) {
-        const errorMessage =
-          err instanceof Error
-            ? err.message
-            : 'Failed to fetch merchants'
+        const errorMessage = err instanceof Error ? err.message : 'Failed to fetch merchants'
 
         setError(errorMessage)
 
@@ -178,11 +220,7 @@ export const useAuthStore = defineStore(
      * Get active merchant
      */
     function getActiveMerchant(): string | null {
-      return (
-        localStorage.getItem('activeMerchantId') ||
-        merchantUser.value?.merchantid ||
-        null
-      )
+      return localStorage.getItem('activeMerchantId') || merchantUser.value?.merchantid || null
     }
 
     /**

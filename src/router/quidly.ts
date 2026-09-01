@@ -1,54 +1,53 @@
+
 import { createRouter, createWebHistory } from 'vue-router'
-import { isLoggedIn } from '@/services/auth/auth.service'
+import { useAuthStore } from '@/stores/auth'
 
 const routes = [
   {
     path: '/',
-    redirect: () => (isLoggedIn() ? '/dashboard' : '/auth')
+    redirect: '/auth',
   },
   {
     path: '/auth',
     name: 'auth',
     component: () => import('@/views/Onboarding.vue'),
-    meta: { public: true }
+    meta: { public: true },
   },
   {
     path: '/dashboard',
     name: 'dashboard',
     component: () => import('@/views/Dashboard.vue'),
-    meta: { requiresAuth: true }
+    meta: { requiresAuth: true },
   },
   {
-    // Catch-all — keep last
     path: '/:pathMatch(.*)*',
-    redirect: '/'
-  }
+    redirect: '/auth',
+  },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
-  routes
+  routes,
 })
 
-/**
- * Route guard.
- *
- * NOTE: this checks `isLoggedIn()` from the new `auth.service` (a local
- * token in localStorage), not the Keycloak session that `main.ts` still
- * initializes on boot (`initializeKeycloak`, `authStore.verifyAuth()`).
- * Right now your app has two parallel notions of "authenticated" —
- * see the flag below.
- */
 router.beforeEach((to, from, next) => {
-  const authed = isLoggedIn()
+  const authStore = useAuthStore()
 
-  if (to.meta.requiresAuth && !authed) {
-    next({ path: '/auth', query: { redirect: to.fullPath } })
+  // Always allow onboarding/auth page.
+  // This is where signup happens and where the user can initiate Keycloak login.
+  if (to.name === 'auth') {
+    next()
     return
   }
 
-  if (to.meta.public && authed && to.name === 'auth') {
-    next({ path: '/dashboard' })
+  // Protected routes require authentication.
+  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+    next({
+      name: 'auth',
+      query: {
+        redirect: to.fullPath,
+      },
+    })
     return
   }
 
@@ -56,3 +55,4 @@ router.beforeEach((to, from, next) => {
 })
 
 export default router
+

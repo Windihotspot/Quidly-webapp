@@ -4,9 +4,6 @@ type KeycloakClient = InstanceType<typeof Keycloak>
 
 let keycloakInstance: KeycloakClient | null = null
 
-/**
- * Initialize Keycloak with the application
- */
 export async function initializeKeycloak(): Promise<KeycloakClient> {
   if (keycloakInstance) {
     return keycloakInstance
@@ -20,7 +17,7 @@ export async function initializeKeycloak(): Promise<KeycloakClient> {
 
   try {
     const authenticated = await keycloakInstance.init({
-      onLoad: 'login-required',
+      onLoad: 'check-sso',
       checkLoginIframe: false,
       enableLogging: import.meta.env.DEV,
       useNonce: false,
@@ -30,10 +27,10 @@ export async function initializeKeycloak(): Promise<KeycloakClient> {
 
     if (authenticated) {
       console.log('✅ Keycloak authenticated successfully')
-
       cleanupCallbackUrl()
-
       setupTokenRefresh(keycloakInstance)
+    } else {
+      console.log('ℹ️ No existing Keycloak session')
     }
 
     return keycloakInstance
@@ -42,10 +39,6 @@ export async function initializeKeycloak(): Promise<KeycloakClient> {
     throw error
   }
 }
-
-/**
- * Get the current Keycloak instance
- */
 export function getKeycloakInstance(): KeycloakClient {
   if (!keycloakInstance) {
     throw new Error(
@@ -56,20 +49,22 @@ export function getKeycloakInstance(): KeycloakClient {
   return keycloakInstance
 }
 
-/**
- * Check if user is authenticated
- */
 export function isAuthenticated(): boolean {
   return keycloakInstance?.authenticated ?? false
 }
 
-/**
- * Get the current access token
- */
 export function getToken(): string | undefined {
   return keycloakInstance?.token
 }
 
+export async function login(email?: string): Promise<void> {
+  const kc = getKeycloakInstance()
+
+  await kc.login({
+    redirectUri: `${window.location.origin}/dashboard`,
+    ...(email ? { loginHint: email } : {})
+  })
+}
 /**
  * Get the token with optional refresh
  */
@@ -126,17 +121,28 @@ function setupTokenRefresh(kc: KeycloakClient): void {
  * Clean up authentication callback parameters from URL
  */
 function cleanupCallbackUrl(): void {
-  if (
-    window.location.search.includes('code=') ||
-    window.location.search.includes('state=')
-  ) {
-    const cleanUrl =
-      `${window.location.origin}` +
-      `${window.location.pathname}` +
-      `${window.location.hash}`
+  const params = new URLSearchParams(window.location.search)
 
-    window.history.replaceState({}, document.title, cleanUrl)
+  const hasKeycloakParams =
+    params.has('code') ||
+    params.has('state') ||
+    params.has('error') ||
+    params.has('session_state')
+
+  if (!hasKeycloakParams) {
+    return
   }
+
+  const cleanUrl =
+    `${window.location.origin}` +
+    `${window.location.pathname}` +
+    `${window.location.hash}`
+
+  window.history.replaceState(
+    {},
+    document.title,
+    cleanUrl
+  )
 }
 
 /**

@@ -313,7 +313,6 @@ const signOut = async () => {
 
 .dash-menu > li:hover:not(.active) {
   background: #f0fdf4;
-  border-left-color: #65a30d;
   color: #3f6e1f;
 }
 

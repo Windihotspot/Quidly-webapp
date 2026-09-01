@@ -171,7 +171,7 @@ export async function registerMerchant(
  *  tokens so subsequent API calls can pick them up. */
 export async function login(payload: LoginPayload): Promise<LoginResponse> {
   const result = await safeCall<LoginResponseData>(() =>
-    post<LoginResponse>('/auth/login', {
+    post<LoginResponse>('/mdb/procedure/spEmailLogin', {
       email: normalizeEmail(payload.email),
       password: payload.password
     })

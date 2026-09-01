@@ -1,5 +1,13 @@
 import axios, { type AxiosInstance, type AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { getAccessToken, isLoggedIn, logout } from '@/services/auth/auth.service'
+import {
+  getToken,
+  getTokenWithRefresh,
+  isAuthenticated as isKeycloakAuthenticated,
+  logout as keycloakLogout
+} from '@/services/keycloak/keycloak.service'
+
+
 
 let apiClient: AxiosInstance | null = null
 
@@ -20,22 +28,32 @@ export function initializeApiClient(): AxiosInstance {
     }
   })
 
-  // Request interceptor - add auth token
-  apiClient.interceptors.request.use(
-    (config: InternalAxiosRequestConfig) => {
-      // Only add token if user is authenticated
-      if (isLoggedIn()) {
-        const token = getAccessToken()
+ 
+apiClient.interceptors.request.use(
+  async (config: InternalAxiosRequestConfig) => {
+    if (isKeycloakAuthenticated()) {
+      try {
+        const token = await getTokenWithRefresh()
+
         if (token) {
           config.headers.Authorization = `Bearer ${token}`
         }
+      } catch (error) {
+        console.error(
+          '❌ Failed to get Keycloak token:',
+          error
+        )
       }
-      return config
-    },
-    (error) => {
-      return Promise.reject(error)
     }
-  )
+
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
+
 
   // Response interceptor - handle errors
   apiClient.interceptors.response.use(

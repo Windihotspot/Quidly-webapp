@@ -1,14 +1,98 @@
-<script setup>
+<script setup lang="ts">
 import { computed, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+
 import { useThemeStore } from '@/stores/useTheme'
+import { useAuthStore } from '@/stores/auth'
 
 const themeStore = useThemeStore()
+const authStore = useAuthStore()
 
 const isDark = computed(() => themeStore.isDark)
 
 const toggleTheme = () => {
   themeStore.toggle()
 }
+
+/*
+|--------------------------------------------------------------------------
+| Auth / User Details
+|--------------------------------------------------------------------------
+*/
+
+const {
+  user,
+  activeMerchant,
+} = storeToRefs(authStore)
+
+/*
+|--------------------------------------------------------------------------
+| Current Merchant
+|--------------------------------------------------------------------------
+*/
+
+const merchantName = computed(() => {
+  return activeMerchant.value?.merchantname ?? 'Select Merchant'
+})
+
+/*
+|--------------------------------------------------------------------------
+| User Name
+|--------------------------------------------------------------------------
+*/
+
+const displayName = computed(() => {
+  if (!user.value) {
+    return 'User'
+  }
+
+  return `${user.value.fname ?? ''} ${user.value.lname ?? ''}`
+    .trim() || 'User'
+})
+
+/*
+|--------------------------------------------------------------------------
+| User Role
+|--------------------------------------------------------------------------
+*/
+
+const displayRole = computed(() => {
+  return user.value?.isadmin === 1
+    ? 'Administrator'
+    : 'User'
+})
+
+/*
+|--------------------------------------------------------------------------
+| User Initials
+|--------------------------------------------------------------------------
+*/
+
+const userInitials = computed(() => {
+  const firstName = user.value?.fname?.trim() ?? ''
+  const lastName = user.value?.lname?.trim() ?? ''
+
+  if (firstName && lastName) {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`
+      .toUpperCase()
+  }
+
+  if (firstName) {
+    return firstName.substring(0, 2).toUpperCase()
+  }
+
+  if (lastName) {
+    return lastName.substring(0, 2).toUpperCase()
+  }
+
+  return 'US'
+})
+
+/*
+|--------------------------------------------------------------------------
+| Date
+|--------------------------------------------------------------------------
+*/
 
 const formattedDate = computed(() => {
   return new Date().toLocaleDateString('en-GB', {
@@ -18,32 +102,11 @@ const formattedDate = computed(() => {
   })
 })
 
-/* Hardcoded for now */
-const merchantName = ref('Template Merchant')
-const displayName = ref('Template Name')
-const displayRole = ref('Administrator')
-const userInitials = computed(() => 'TN')
-
-/* Merchant accounts */
-const merchants = ref([
-  {
-    id: 1,
-    name: 'Template Merchant',
-    initials: 'TM'
-  },
-  {
-    id: 2,
-    name: 'Quidly Store',
-    initials: 'QS'
-  },
-  {
-    id: 3,
-    name: 'Demo Business',
-    initials: 'DB'
-  }
-])
-
-const selectedMerchant = ref(merchants.value[0])
+/*
+|--------------------------------------------------------------------------
+| Notifications
+|--------------------------------------------------------------------------
+*/
 
 const notifications = ref([
   {
@@ -62,21 +125,14 @@ const notifications = ref([
 
 const unreadCount = computed(() => notifications.value.length)
 
-const selectMerchant = (merchant) => {
-  selectedMerchant.value = merchant
-  merchantName.value = merchant.name
+/*
+|--------------------------------------------------------------------------
+| Notifications
+|--------------------------------------------------------------------------
+*/
 
-  console.log('Switched to:', merchant.name)
-
-  // Later you can load the selected merchant's data here
-}
-
-const logout = () => {
-  console.log('Logout clicked')
-
-  // Later:
-  // authStore.logout()
-  // router.push('/')
+const markAllRead = () => {
+  notifications.value = []
 }
 </script>
 

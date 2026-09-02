@@ -9,7 +9,7 @@ import {
 } from '@/services/keycloak/keycloak.service'
 import { post } from '@/services/api/api.service'
 
-import type { IAppUser, IMerchantUser } from '@/types/quidlyInterfaces'
+import type { IAppUser, IMerchantUser, IMerchant } from '@/types/quidlyInterfaces'
 
 interface ApiResponse<T> {
   status: number
@@ -22,7 +22,8 @@ export const useAuthStore = defineStore(
     // State
     const user = ref<IAppUser | null>(null)
     const merchantUser = ref<IMerchantUser | null>(null)
-
+    const merchants = ref<IMerchant[]>([])
+    const activeMerchantId = ref<string | null>(localStorage.getItem('activeMerchantId'))
     const isAuthenticated = ref(false)
     const isAuthenticating = ref(true)
     const error = ref<string | null>(null)
@@ -38,6 +39,14 @@ export const useAuthStore = defineStore(
 
     const quidlyUserId = computed(() => user.value?.quidlyuserid)
 
+    // Currently selected merchant with full merchant details
+    const activeMerchant = computed<IMerchant | null>(() => {
+      if (!activeMerchantId.value) return null
+
+      return (
+        merchants.value.find((merchant) => merchant.merchantid === activeMerchantId.value) ?? null
+      )
+    })
     /**
      * Set authenticated user
      */
@@ -72,105 +81,111 @@ export const useAuthStore = defineStore(
      * Verify authentication on app boot.
 
      */
-   async function verifyAuth(): Promise<IAppUser | null> {
-  try {
-    isAuthenticating.value = true
-    clearError()
+    async function verifyAuth(): Promise<IAppUser | null> {
+      try {
+        isAuthenticating.value = true
+        clearError()
 
-    console.log('🔐 Initializing Keycloak...')
+        console.log('🔐 Initializing Keycloak...')
 
-    const kc = await initializeKeycloak()
+        const kc = await initializeKeycloak()
 
-    if (!kc.authenticated || !isKeycloakAuthenticated()) {
-      console.log('ℹ️ User is not authenticated with Keycloak')
-      reset()
-      return null
-    }
+        if (!kc.authenticated || !isKeycloakAuthenticated()) {
+          console.log('ℹ️ User is not authenticated with Keycloak')
+          reset()
+          return null
+        }
 
-    console.log('✅ User authenticated with Keycloak')
+        console.log('✅ User authenticated with Keycloak')
 
-    const token = getToken()
+        const token = getToken()
 
-    if (!token) {
-      throw new Error('Keycloak access token not available')
-    }
+        if (!token) {
+          throw new Error('Keycloak access token not available')
+        }
 
-    console.log('🔑 Keycloak token available')
+        console.log('🔑 Keycloak token available')
 
-    const keycloakUser = getUserInfo()
+        const keycloakUser = getUserInfo()
 
-    console.log('👤 Keycloak user:', keycloakUser)
+        console.log('👤 Keycloak user:', keycloakUser)
 
-    if (!keycloakUser?.email) {
-      throw new Error('Email not found in Keycloak token')
-    }
+        if (!keycloakUser?.email) {
+          throw new Error('Email not found in Keycloak token')
+        }
 
-    // Get the actual Quidly user from your backend
-    const response = await post<ApiResponse<IAppUser[]>>(
-      '/mdb/procedure/GetUserDetailsByEmailExtended',
-      {
-        p_email: keycloakUser.email
+        // ---------------------------------------------------------
+        // Get Quidly user
+        // ---------------------------------------------------------
+
+        const response = await post<ApiResponse<IAppUser[]>>(
+          '/mdb/procedure/GetUserDetailsByEmailExtended',
+          {
+            p_email: keycloakUser.email
+          }
+        )
+
+        console.log('👤 GetUserDetailsByEmailExtended response:', response.data)
+
+        if (
+          response.data?.status !== 1 ||
+          !Array.isArray(response.data.jsresult) ||
+          response.data.jsresult.length === 0
+        ) {
+          throw new Error('Quidly user details not found')
+        }
+
+        const appUser = response.data.jsresult[0]
+
+        setUser(appUser)
+
+        // ---------------------------------------------------------
+        // Set merchant user information
+        // ---------------------------------------------------------
+
+        if (appUser.accountid && appUser.quidlyuserid) {
+          const merchantInfo: IMerchantUser = merchantUser.value ?? {
+            accountid: '',
+            quidlyuserid: '',
+            merchantid: ''
+          }
+
+          merchantInfo.accountid = appUser.accountid
+          merchantInfo.quidlyuserid = appUser.quidlyuserid
+
+          setMerchantUser(merchantInfo)
+        }
+
+        // ---------------------------------------------------------
+        // Fetch complete merchant details
+        // This also restores/selects the active merchant
+        // ---------------------------------------------------------
+
+        await fetchMerchantDetails()
+
+        console.log('✅ Quidly user loaded:', appUser)
+
+        console.log('🏪 Active merchant ID:', activeMerchantId.value)
+
+        console.log('🏪 Active merchant:', activeMerchant.value)
+
+        console.log('🏪 Merchants loaded:', merchants.value)
+
+        return appUser
+      } catch (err) {
+        const errorMessage =
+          err instanceof Error ? err.message : 'Authentication verification failed'
+
+        console.error('❌ Auth verification failed:', err)
+
+        reset()
+        setError(errorMessage)
+
+        return null
+      } finally {
+        isAuthenticating.value = false
       }
-    )
-
-    console.log(
-      '👤 GetUserDetailsByEmailExtended response:',
-      response.data
-    )
-
-    if (
-      response.data?.status !== 1 ||
-      !Array.isArray(response.data.jsresult) ||
-      response.data.jsresult.length === 0
-    ) {
-      throw new Error('Quidly user details not found')
     }
-
-    const appUser = response.data.jsresult[0]
-
-    // This is the equivalent of your old setAuth()
-    setUser(appUser)
-
-    // Set merchant information
-    if (appUser.accountid && appUser.quidlyuserid) {
-      const merchants = merchantUser.value ?? ({} as IMerchantUser)
-
-      merchants.accountid = appUser.accountid
-      merchants.quidlyuserid = appUser.quidlyuserid
-
-      if (
-        appUser.merchantids &&
-        appUser.merchantids.length > 0
-      ) {
-        merchants.merchantid = appUser.merchantids[0]
-      } else {
-        merchants.merchantid = ''
-      }
-
-      setMerchantUser(merchants)
-    }
-
-    console.log('✅ Quidly user loaded:', appUser)
-
-    return appUser
-
-  } catch (err) {
-    const errorMessage =
-      err instanceof Error
-        ? err.message
-        : 'Authentication verification failed'
-
-    console.error('❌ Auth verification failed:', err)
-
-    reset()
-    setError(errorMessage)
-
-    return null
-
-  } finally {
-    isAuthenticating.value = false
-  }
-}
 
     /**
      * Get linked merchants
@@ -204,23 +219,138 @@ export const useAuthStore = defineStore(
         return []
       }
     }
+    async function fetchMerchantDetails(): Promise<IMerchant[]> {
+      const ids = user.value?.merchantids ?? []
+
+      if (ids.length === 0) {
+        merchants.value = []
+        activeMerchantId.value = null
+
+        localStorage.removeItem('activeMerchantId')
+
+        return []
+      }
+
+      try {
+        const results = await Promise.all(
+          ids.map(async (merchantId) => {
+            try {
+              const response = await post<ApiResponse<IMerchant[]>>(
+                '/mdb/procedure/GetMerchantDetails',
+                {
+                  p_merchantid: merchantId
+                }
+              )
+
+              const body = response?.data ?? response
+
+              const jsresult = Array.isArray(body) ? body : body?.jsresult
+
+              if (Array.isArray(jsresult) && jsresult.length > 0 && jsresult[0]?.status === 1) {
+                return jsresult[0]
+              }
+
+              console.warn(`[fetchMerchantDetails] No valid result for ${merchantId}`, response)
+
+              return null
+            } catch (err) {
+              console.error(`GetMerchantDetails failed for ${merchantId}`, err)
+
+              return null
+            }
+          })
+        )
+
+        // ---------------------------------------------------------
+        // Store all valid merchants
+        // ---------------------------------------------------------
+
+        merchants.value = results.filter((merchant): merchant is IMerchant => merchant !== null)
+
+        console.log('🏪 Final merchants:', merchants.value)
+
+        // ---------------------------------------------------------
+        // Restore previously selected merchant
+        // ---------------------------------------------------------
+
+        const savedMerchantId = localStorage.getItem('activeMerchantId')
+
+        const savedMerchantExists =
+          !!savedMerchantId &&
+          merchants.value.some((merchant) => merchant.merchantid === savedMerchantId)
+
+        if (savedMerchantExists) {
+          // Restore previously selected merchant
+          activeMerchantId.value = savedMerchantId
+
+          console.log('♻️ Restored active merchant:', activeMerchantId.value)
+        } else if (merchants.value.length > 0) {
+          // No valid saved merchant.
+          // Select the first merchant.
+          const firstMerchant = merchants.value[0].merchantid
+
+          activeMerchantId.value = firstMerchant
+
+          localStorage.setItem('activeMerchantId', firstMerchant)
+
+          console.log('🏪 Default active merchant:', firstMerchant)
+        } else {
+          // No merchants available
+          activeMerchantId.value = null
+
+          localStorage.removeItem('activeMerchantId')
+        }
+
+        // ---------------------------------------------------------
+        // Keep merchantUser synchronized
+        // ---------------------------------------------------------
+
+        if (merchantUser.value) {
+          merchantUser.value.merchantid = activeMerchantId.value ?? ''
+        }
+
+        console.log('🎯 Active merchant:', activeMerchant.value)
+
+        return merchants.value
+      } catch (err) {
+        console.error('❌ fetchMerchantDetails failed:', err)
+
+        merchants.value = []
+        activeMerchantId.value = null
+
+        return []
+      }
+    }
 
     /**
      * Set active merchant
      */
     function setActiveMerchant(merchantId: string) {
-      if (!merchantUser.value) return
+      const merchantExists = merchants.value.some((merchant) => merchant.merchantid === merchantId)
 
-      merchantUser.value.merchantid = merchantId
+      if (!merchantExists) {
+        console.warn(`Merchant ${merchantId} does not exist in loaded merchants`)
+        return
+      }
+
+      // Single source of truth
+      activeMerchantId.value = merchantId
+
+      // Keep merchantUser in sync for API requests
+      if (merchantUser.value) {
+        merchantUser.value.merchantid = merchantId
+      }
 
       localStorage.setItem('activeMerchantId', merchantId)
+
+      console.log('✅ Active merchant ID changed:', merchantId)
     }
 
     /**
      * Get active merchant
      */
     function getActiveMerchant(): string | null {
-      return localStorage.getItem('activeMerchantId') || merchantUser.value?.merchantid || null
+      return activeMerchantId.value
     }
 
     /**
@@ -229,6 +359,8 @@ export const useAuthStore = defineStore(
     function reset() {
       user.value = null
       merchantUser.value = null
+      merchants.value = []
+      activeMerchantId.value = null
       isAuthenticated.value = false
       error.value = null
 
@@ -254,6 +386,8 @@ export const useAuthStore = defineStore(
       // State
       user,
       merchantUser,
+      merchants,
+      activeMerchantId,
       isAuthenticated,
       isAuthenticating,
       error,
@@ -264,6 +398,7 @@ export const useAuthStore = defineStore(
       userEmail,
       accountId,
       quidlyUserId,
+      activeMerchant,
 
       // Methods
       setUser,
@@ -272,6 +407,7 @@ export const useAuthStore = defineStore(
       clearError,
       verifyAuth,
       fetchMerchants,
+      fetchMerchantDetails,
       setActiveMerchant,
       getActiveMerchant,
       reset,
@@ -280,7 +416,7 @@ export const useAuthStore = defineStore(
   },
   {
     persist: {
-      paths: ['user', 'merchantUser'],
+      paths: ['user', 'merchantUser', 'merchants'],
       storage: localStorage
     }
   }

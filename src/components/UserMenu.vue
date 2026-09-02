@@ -1,63 +1,117 @@
-<script setup>
+
+<script setup lang="ts">
 import { computed, ref } from 'vue'
+import { storeToRefs } from 'pinia'
+import { useAuthStore } from '@/stores/auth'
 
 const props = defineProps({
   variant: {
     type: String,
-    default: 'header' // header | sidebar
-  }
+    default: 'header', // header | sidebar
+  },
 })
 
-const merchantName = ref('Template Merchant')
-const displayName = ref('  Merchant Name')
-const displayRole = ref('Admin')
+const authStore = useAuthStore()
 
+const {
+  user,
+  merchants,
+  activeMerchant,
+} = storeToRefs(authStore)
+
+/*
+|--------------------------------------------------------------------------
+| Merchant Menu
+|--------------------------------------------------------------------------
+*/
+
+const merchantMenuOpen = ref(false)
+
+// User's full name
+const displayName = computed(() => {
+  if (!user.value) return 'Merchant Name'
+
+  return `${user.value.fname ?? ''} ${user.value.lname ?? ''}`
+    .trim() || 'Merchant Name'
+})
+
+// User role
+const displayRole = computed(() => {
+  return user.value?.isadmin === 1 ? 'Admin' : 'User'
+})
+
+// Current merchant name
+const merchantName = computed(() => {
+  return activeMerchant.value?.merchantname ?? 'Select Merchant'
+})
+
+// User initials
 const userInitials = computed(() => {
-  return displayName.value
-    .split(' ')
-    .map((name) => name.charAt(0))
+  const name = displayName.value.trim()
+
+  if (!name) return 'MN'
+
+  return name
+    .split(/\s+/)
+    .map(name => name.charAt(0))
     .join('')
     .slice(0, 2)
     .toUpperCase()
 })
 
-const merchants = ref([
-  {
-    id: 1,
-    name: 'Merchant Name',
-    initials: 'TM'
-  },
-  {
-    id: 2,
-    name: 'Quidly Store',
-    initials: 'QS'
-  },
-  {
-    id: 3,
-    name: 'Demo Business',
-    initials: 'DB'
-  }
-])
+// Merchant initials
+const getMerchantInitials = (name: string) => {
+  if (!name) return 'M'
 
-const selectedMerchant = ref(merchants.value[0])
-
-const selectMerchant = (merchant) => {
-  selectedMerchant.value = merchant
-  merchantName.value = merchant.name
-
-  console.log('Switched to:', merchant.name)
+  return name
+    .trim()
+    .split(/\s+/)
+    .map(word => word.charAt(0))
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
 }
 
-const logout = () => {
-  console.log('Logout clicked')
+/*
+|--------------------------------------------------------------------------
+| Switch Merchant
+|--------------------------------------------------------------------------
+*/
+
+const selectMerchant = (merchantId: string) => {
+  console.log('➡️ Selecting merchant:', merchantId)
+
+  authStore.setActiveMerchant(merchantId)
+
+  // Close menu
+  merchantMenuOpen.value = false
+
+  console.log(
+    '✅ Current merchant:',
+    authStore.activeMerchant?.merchantname
+  )
+}
+
+/*
+|--------------------------------------------------------------------------
+| Logout
+|--------------------------------------------------------------------------
+*/
+
+const logout = async () => {
+  await authStore.logout()
 }
 </script>
 
+
+
 <template>
   <v-menu
-    location="bottom end"
-    origin="top right"
+    v-model="merchantMenuOpen"
+    :location="variant === 'sidebar' ? 'right center' : 'bottom end'"
+    :origin="variant === 'sidebar' ? 'left center' : 'top right'"
     min-width="280"
+    :offset="10"
     :close-on-content-click="false"
   >
     <template #activator="{ props: menuProps }">
@@ -72,134 +126,55 @@ const logout = () => {
           {{ userInitials }}
         </div>
 
-        <!-- User / Merchant Info -->
+        <!-- Merchant Info -->
         <div class="user-menu-info">
           <span class="user-menu-merchant">
             {{ merchantName }}
           </span>
-
         </div>
 
-        <!-- Arrow -->
-         <i class="mdi mdi-cog-outline user-menu-chevron rotating-settings"></i>
+        <!-- Settings Icon -->
+        <i
+          class="mdi mdi-cog-outline user-menu-chevron rotating-settings"
+        ></i>
       </button>
     </template>
 
-    <!-- Main Menu -->
-    <v-list
-      density="compact"
-      class="user-dropdown"
-    >
-      <!-- User Information -->
-      <div class="dropdown-user-info">
-        <div class="dropdown-avatar">
-          {{ userInitials }}
-        </div>
-
-        <div>
-          <div class="dropdown-name">
-            {{ displayName }}
-          </div>
-
-          <div class="dropdown-role">
-            {{ displayRole }}
-          </div>
-        </div>
+    <!-- Merchant Switch Menu -->
+    <v-list class="merchant-switch-menu">
+      <div class="merchant-menu-title">
+        Switch Merchant
       </div>
 
-      <v-divider />
+      <div class="merchant-menu-subtitle">
+        Select a merchant to continue
+      </div>
 
-      <!-- Profile -->
-      <v-list-item class="dropdown-item">
-        <div class="dropdown-item-content">
-          <i class="mdi mdi-account-outline"></i>
-          <span>My Profile</span>
-        </div>
-      </v-list-item>
-
-      <!-- Settings -->
-      <v-list-item class="dropdown-item">
-        <div class="dropdown-item-content">
-          <i class="mdi mdi-cog-outline"></i>
-          <span>Settings</span>
-        </div>
-      </v-list-item>
-
-      <!-- Switch Account -->
-      <v-menu
-        location="start"
-        origin="end"
-        submenu
-        :close-on-content-click="true"
-      >
-        <template #activator="{ props: switchProps }">
-          <v-list-item
-            v-bind="switchProps"
-            class="dropdown-item"
-          >
-            <div class="dropdown-item-content">
-              <i class="mdi mdi-swap-horizontal"></i>
-
-              <span>Switch Account</span>
-
-              <i class="mdi mdi-chevron-right switch-chevron"></i>
-            </div>
-          </v-list-item>
-        </template>
-
-        <!-- Merchant Accounts -->
-        <v-list
-          min-width="240"
-          class="merchant-switch-menu"
-        >
-          <div class="merchant-menu-title">
-            Switch Account
-          </div>
-
-          <div class="merchant-menu-subtitle">
-            Select a merchant
-          </div>
-
-          <v-divider class="my-2" />
-
-          <v-list-item
-            v-for="merchant in merchants"
-            :key="merchant.id"
-            class="merchant-option"
-            :class="{
-              'active-merchant':
-                selectedMerchant.id === merchant.id
-            }"
-            @click="selectMerchant(merchant)"
-          >
-            <div class="merchant-option-content">
-              <div class="merchant-avatar">
-                {{ merchant.initials }}
-              </div>
-
-              <span class="merchant-option-name">
-                {{ merchant.name }}
-              </span>
-
-              <i
-                v-if="selectedMerchant.id === merchant.id"
-                class="mdi mdi-check merchant-check"
-              ></i>
-            </div>
-          </v-list-item>
-        </v-list>
-      </v-menu>
-
-      <v-divider />
-
-      <!-- Logout -->
       <v-list-item
-        class="logout-item"
-        @click="logout"
+        v-for="merchant in merchants"
+        :key="merchant.merchantid"
+        class="merchant-option"
+        :class="{
+          'active-merchant':
+            activeMerchant?.merchantid === merchant.merchantid
+        }"
+        @click="selectMerchant(merchant.merchantid)"
       >
-        <div class="dropdown-item-content">
-          <i class="mdi mdi-logout-variant"></i>
-          <span>Logout</span>
+        <div class="merchant-option-content">
+          <div class="merchant-avatar">
+            {{ getMerchantInitials(merchant.merchantname) }}
+          </div>
+
+          <span class="merchant-option-name">
+            {{ merchant.merchantname }}
+          </span>
+
+          <i
+            v-if="
+              activeMerchant?.merchantid === merchant.merchantid
+            "
+            class="mdi mdi-check merchant-check"
+          ></i>
         </div>
       </v-list-item>
     </v-list>

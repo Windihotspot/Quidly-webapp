@@ -1,3 +1,168 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ========================================
+   DARK MODE
+   ======================================== */
+
+html.dark,
+html.dark body {
+  background: #0f172a;
+  color: #f1f5f9;
+}
+
+html.dark #app {
+  background: #0f172a;
+  min-height: 100vh;
+}
+
+/* =========================
+   HEADER
+   ========================= */
+
+html.dark .app-header {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+html.dark .icon-btn {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+html.dark .date-chip {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+html.dark .merchant-user-btn {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+}
+
+html.dark .merchant-name {
+  color: #f1f5f9 !important;
+}
+
+html.dark .merchant-user-role {
+  color: #94a3b8 !important;
+}
+
+html.dark .user-avatar-btn {
+  color: #fff !important;
+}
+
+/* =========================
+   SIDEBAR
+   ========================= */
+
+html.dark .dash-sidebar {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+html.dark .sidebar-user-section {
+  background: #0f172a !important;
+  border-color: #334155 !important;
+}
+
+html.dark .dash-menu > li {
+  color: #cbd5e1;
+}
+
+html.dark .dash-menu > li:hover:not(.active) {
+  background: #1e293b;
+}
+
+html.dark .dash-menu > li.active {
+  background: #1e293b;
+  color: #fff;
+}
+
+html.dark .submenu-wrapper {
+  border-color: #334155;
+}
+
+html.dark .submenu-link {
+  color: #94a3b8;
+}
+
+html.dark .submenu-link:hover {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
+/* =========================
+   CARDS
+   ========================= */
+
+html.dark .card,
+html.dark .dashboard-card,
+html.dark .stat-card {
+  background: #1e293b !important;
+  border-color: #334155 !important;
+  color: #f1f5f9 !important;
+}
+
+/* =========================
+   TEXT
+   ========================= */
+
+html.dark h1,
+html.dark h2,
+html.dark h3,
+html.dark h4,
+html.dark h5,
+html.dark h6 {
+  color: #f8fafc;
+}
+
+html.dark p,
+html.dark span,
+html.dark label {
+  color: inherit;
+}
+
+/* =========================
+   INPUTS
+   ========================= */
+
+html.dark input,
+html.dark textarea,
+html.dark select {
+  background: #1e293b !important;
+  border-color: #475569 !important;
+  color: #f1f5f9 !important;
+}
+
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: #64748b !important;
+}
+
+/* =========================
+   TABLES
+   ========================= */
+
+html.dark table {
+  background: #1e293b;
+  color: #f1f5f9;
+}
+
+html.dark th {
+  background: #0f172a !important;
+  color: #cbd5e1 !important;
+  border-color: #334155 !important;
+}
+
+html.dark td {
+  border-color: #334155 !important;
+  color: #cbd5e1 !important;
+}
+
+html.dark tr:hover {
+  background: #334155 !important;
+}

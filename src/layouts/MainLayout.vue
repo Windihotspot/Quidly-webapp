@@ -91,6 +91,6 @@ const toggleDrawer = () => {
 
 .page-wrapper {
   padding: 24px !important;
-  background: #f8f9fa;
+  background: #f5faf9;
 }
 </style>

@@ -78,7 +78,7 @@ const selectMerchant = (merchantId: string) => {
   authStore.setActiveMerchant(merchantId)
 
   // Close menu
-  merchantMenuOpen.value = false
+  userMenuOpen.value = false
 
   console.log('✅ Current merchant:', authStore.activeMerchant?.merchantname)
 }

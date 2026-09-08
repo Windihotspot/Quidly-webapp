@@ -1,9 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import type { RouteRecordRaw } from 'vue-router'
 
-import quidlyRoutes from './quidly'
-
-const routes = [
+const routes: RouteRecordRaw[] = [
   // --------------------------------------------------
   // Root
   // --------------------------------------------------
@@ -18,16 +17,35 @@ const routes = [
   {
     path: '/auth',
     name: 'auth',
-    component: () => import('@/views/Onboarding.vue'),
+    component: () => import('@/views/auth/Onboarding.vue'),
     meta: {
       public: true,
     },
   },
 
   // --------------------------------------------------
-  // Quidly / Sidebar Routes
+  // Dashboard
   // --------------------------------------------------
-  ...quidlyRoutes,
+  {
+    path: '/dashboard',
+    name: 'dashboard',
+    component: () => import('@/views/dashboard/Dashboard.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+  },
+
+  // --------------------------------------------------
+  // Accounts
+  // --------------------------------------------------
+  {
+    path: '/subaccounts',
+    name: 'SubAccounts',
+    component: () => import('@/views/accounts/SubAccounts.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+  },
 
   // --------------------------------------------------
   // Catch All
@@ -47,28 +65,24 @@ const router = createRouter({
 // Navigation Guard
 // --------------------------------------------------
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to) => {
   const authStore = useAuthStore()
 
-  // Public route
   if (to.meta.public) {
-    next()
-    return
+    return true
   }
 
-  // Protected route
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next({
+    return {
       name: 'auth',
       query: {
         redirect: to.fullPath,
       },
-    })
-
-    return
+    }
   }
 
-  next()
+  return true
 })
+
 
 export default router

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import MainLayout from '../MainLayout.vue'
+import MainLayout from '@/layouts/MainLayout.vue'
 import { useSubaccountStore } from '@/stores/subaccount'
 
 const subaccountStore = useSubaccountStore()

@@ -1,58 +1,122 @@
+import type { RouteRecordRaw } from 'vue-router'
 
-import { createRouter, createWebHistory } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
-
-const routes = [
-  {
-    path: '/',
-    redirect: '/auth',
-  },
-  {
-    path: '/auth',
-    name: 'auth',
-    component: () => import('@/views/Onboarding.vue'),
-    meta: { public: true },
-  },
+const quidlyRoutes: RouteRecordRaw[] = [
+  // --------------------------------------------------
+  // Dashboard
+  // --------------------------------------------------
   {
     path: '/dashboard',
     name: 'dashboard',
     component: () => import('@/views/Dashboard.vue'),
-    meta: { requiresAuth: true },
+    meta: {
+      requiresAuth: true,
+    },
   },
+
+  // --------------------------------------------------
+  // Payments
+  // --------------------------------------------------
   {
-    path: '/:pathMatch(.*)*',
-    redirect: '/auth',
+    path: '/payments/invoices',
+    name: 'Invoices',
+    component: () => import('@/layouts/SidebarItems/Invoices.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+  },
+
+  {
+    path: '/payments/creditlist',
+    name: 'Creditlist',
+    component: () => import('@/layouts/SidebarItems/Creditlist.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+  },
+
+  // --------------------------------------------------
+  // Transactions
+  // --------------------------------------------------
+  {
+    path: '/transactions',
+    name: 'Transactions',
+    component: () => import('@/layouts/SidebarItems/Transactions.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+  },
+
+  {
+    path: '/transactions/refunds',
+    name: 'Refunds',
+    component: () => import('@/layouts/SidebarItems/Refunds.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+  },
+
+  // --------------------------------------------------
+  // Accounts
+  // --------------------------------------------------
+  {
+    path: '/subaccounts',
+    name: 'SubAccounts',
+    component: () => import('@/layouts/SidebarItems/SubAccounts.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+  },
+
+  // --------------------------------------------------
+  // Settings
+  // --------------------------------------------------
+  {
+    path: '/settings/compliance',
+    name: 'Compliance',
+    component: () => import('@/layouts/SidebarItems/Compliance.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+  },
+
+  {
+    path: '/settings/api-keys',
+    name: 'ApiKeys',
+    component: () => import('@/layouts/SidebarItems/ApiKeys.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+  },
+
+  {
+    path: '/settings/profile',
+    name: 'Profile',
+    component: () => import('@/layouts/SidebarItems/Profile.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+  },
+
+  {
+    path: '/settings/webhook',
+    name: 'Webhook',
+    component: () => import('@/layouts/SidebarItems/Webhook.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+  },
+
+  // --------------------------------------------------
+  // Documentation
+  // --------------------------------------------------
+  {
+    path: '/docs',
+    name: 'Documentation',
+    component: () => import('@/layouts/SidebarItems/Documentation.vue'),
+    meta: {
+      requiresAuth: true,
+    },
   },
 ]
 
-const router = createRouter({
-  history: createWebHistory(),
-  routes,
-})
-
-router.beforeEach((to, from, next) => {
-  const authStore = useAuthStore()
-
-  // Always allow onboarding/auth page.
-  // This is where signup happens and where the user can initiate Keycloak login.
-  if (to.name === 'auth') {
-    next()
-    return
-  }
-
-  // Protected routes require authentication.
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next({
-      name: 'auth',
-      query: {
-        redirect: to.fullPath,
-      },
-    })
-    return
-  }
-
-  next()
-})
-
-export default router
-
+export default quidlyRoutes

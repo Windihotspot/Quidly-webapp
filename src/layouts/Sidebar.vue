@@ -139,8 +139,8 @@ const menuItems = [
     to: '/accounts',
     children: [
       {
-        label: 'Sub-accounts',
-        to: '/accounts/sub-accounts',
+        label: 'subaccounts',
+        to: '/subaccounts',
       },
       {
         label: 'Banks',

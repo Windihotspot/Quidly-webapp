@@ -1,143 +1,89 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import SubaccountService, {
+  type Subaccount
+} from '@/services/subaccount/subaccount.service'
+import { useAuthStore } from '@/stores/auth'
 
-export interface SubAccount {
-  id: string
-  name: string
-  number: string
-  bank: string
-  status: 'active' | 'inactive'
-}
+export const useSubaccountStore = defineStore('subaccount', () => {
+  const authStore = useAuthStore()
 
-export const useSubaccountStore = defineStore(
-  'subaccount',
-  () => {
-    // -----------------------------
-    // State
-    // -----------------------------
-    const subaccounts = ref<SubAccount[]>([
-      {
-        id: '',
-        name: '',
-        number: '',
-        bank: '',
-        status: '',
-      },
-    ])
+  const subaccounts = ref<Subaccount[]>([])
+  const loading = ref(false)
+  const error = ref<string | null>(null)
+  const searchQuery = ref('')
 
-    const searchQuery = ref('')
-    const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
+  const filteredSubaccounts = computed(() => {
+    const query = searchQuery.value.trim().toLowerCase()
 
-    // -----------------------------
-    // Getters
-    // -----------------------------
-    const filteredSubaccounts = computed(() => {
-      const search = searchQuery.value.toLowerCase().trim()
+    if (!query) {
+      return subaccounts.value
+    }
 
-      return subaccounts.value.filter((account) => {
-        const matchesSearch =
-          account.name.toLowerCase().includes(search) ||
-          account.id.toLowerCase().includes(search) ||
-          account.number.includes(search)
+    return subaccounts.value.filter((account) =>
+      [
+        account.subaccountname,
+        account.subaccountid,
+        account.accountid,
+        account.merchantid,
+        account.activeBank?.bankaccountno,
+        account.activeBank?.bankid
+      ].some((value) =>
+        value?.toLowerCase().includes(query)
+      )
+    )
+  })
 
-        const matchesStatus =
-          statusFilter.value === 'all' ||
-          account.status === statusFilter.value
+  const totalSubaccounts = computed(() => {
+    return subaccounts.value.length
+  })
 
-        return matchesSearch && matchesStatus
+  async function fetchSubaccounts() {
+    loading.value = true
+    error.value = null
+
+    try {
+      const accountId = authStore.accountId
+      const merchantId = authStore.activeMerchantId
+
+      console.log('📥 Fetching subaccounts:', {
+        accountId,
+        merchantId
       })
-    })
 
-    const totalSubaccounts = computed(() => {
-      return subaccounts.value.length
-    })
-
-    const activeSubaccounts = computed(() => {
-      return subaccounts.value.filter(
-        (account) => account.status === 'active'
-      ).length
-    })
-
-    const inactiveSubaccounts = computed(() => {
-      return subaccounts.value.filter(
-        (account) => account.status === 'inactive'
-      ).length
-    })
-
-    // -----------------------------
-    // Actions
-    // -----------------------------
-    function addSubaccount(account: SubAccount) {
-      subaccounts.value.push(account)
-    }
-
-    function updateSubaccount(
-      id: string,
-      updates: Partial<SubAccount>
-    ) {
-      const index = subaccounts.value.findIndex(
-        (account) => account.id === id
-      )
-
-      if (index === -1) return
-
-      subaccounts.value[index] = {
-        ...subaccounts.value[index],
-        ...updates,
+      if (!accountId || !merchantId) {
+        throw new Error('Account ID or Merchant ID is not available')
       }
-    }
 
-    function toggleAccountStatus(account: SubAccount) {
-      account.status =
-        account.status === 'active'
-          ? 'inactive'
-          : 'active'
-
-      console.log(
-        'Updated:',
-        account.name,
-        account.status
+      const data = await SubaccountService.getSubaccounts(
+        accountId,
+        merchantId
       )
+
+      subaccounts.value = data
+
+      console.log('✅ Subaccounts loaded:', data)
+    } catch (err) {
+      console.error('❌ Failed to fetch subaccounts:', err)
+
+      error.value =
+        err instanceof Error
+          ? err.message
+          : 'Failed to fetch subaccounts'
+
+      subaccounts.value = []
+    } finally {
+      loading.value = false
     }
-
-    function deleteSubaccount(id: string) {
-      subaccounts.value = subaccounts.value.filter(
-        (account) => account.id !== id
-      )
-    }
-
-    function setSearchQuery(value: string) {
-      searchQuery.value = value
-    }
-
-    function setStatusFilter(
-      value: 'all' | 'active' | 'inactive'
-    ) {
-      statusFilter.value = value
-    }
-
-    return {
-      // state
-      subaccounts,
-      searchQuery,
-      statusFilter,
-
-      // getters
-      filteredSubaccounts,
-      totalSubaccounts,
-      activeSubaccounts,
-      inactiveSubaccounts,
-
-      // actions
-      addSubaccount,
-      updateSubaccount,
-      toggleAccountStatus,
-      deleteSubaccount,
-      setSearchQuery,
-      setStatusFilter,
-    }
-  },
-  {
-    persist: true,
   }
-)
+
+  return {
+    subaccounts,
+    loading,
+    error,
+    searchQuery,
+    filteredSubaccounts,
+    totalSubaccounts,
+    fetchSubaccounts
+  }
+})

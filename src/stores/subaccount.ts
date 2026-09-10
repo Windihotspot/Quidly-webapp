@@ -77,13 +77,119 @@ export const useSubaccountStore = defineStore('subaccount', () => {
     }
   }
 
-  return {
-    subaccounts,
-    loading,
-    error,
-    searchQuery,
-    filteredSubaccounts,
-    totalSubaccounts,
-    fetchSubaccounts
+  // addsubaccounts
+  async function addSubaccount(
+  subaccountname: string,
+  bankid: string,
+  bankaccountno: number
+) {
+  loading.value = true
+  error.value = null
+
+  try {
+    const accountId = authStore.accountId
+    const merchantId = authStore.activeMerchantId
+    const quidlyUserId = authStore.quidlyUserId
+
+    if (!accountId || !merchantId || !quidlyUserId) {
+      throw new Error(
+        'Account ID, Merchant ID or Quidly User ID is not available'
+      )
+    }
+
+    const response = await SubaccountService.addSubaccount({
+      p_accountid: accountId,
+      p_merchantid: merchantId,
+      p_subaccountname: subaccountname,
+      p_quidlyuserid: quidlyUserId,
+      p_bankid: bankid,
+      p_bankaccountno: bankaccountno
+    })
+
+    console.log('✅ Subaccount created:', response)
+
+    // Refresh list after successful creation
+    await fetchSubaccounts()
+
+    return response
+  } catch (err) {
+    console.error('❌ Failed to add subaccount:', err)
+
+    error.value =
+      err instanceof Error
+        ? err.message
+        : 'Failed to add subaccount'
+
+    throw err
+  } finally {
+    loading.value = false
   }
+}
+
+// updateSubaccount
+
+async function updateSubaccount(
+  subaccountid: string,
+  bankid: string,
+  bankaccountno: number,
+  bankidOld: string,
+  bankaccountnoOld: number,
+  banksortcode: number
+) {
+  loading.value = true
+  error.value = null
+
+  try {
+    const accountId = authStore.accountId
+    const merchantId = authStore.activeMerchantId
+    const quidlyUserId = authStore.quidlyUserId
+
+    if (!accountId || !merchantId || !quidlyUserId) {
+      throw new Error(
+        'Account ID, Merchant ID or Quidly User ID is not available'
+      )
+    }
+
+    const response = await SubaccountService.updateSubaccount({
+      p_accountid: accountId,
+      p_merchantid: merchantId,
+      p_subaccountid: subaccountid,
+      p_quidlyuserid: quidlyUserId,
+      p_bankid: bankid,
+      p_bankaccountno: bankaccountno,
+      p_bankid_old: bankidOld,
+      p_bankaccountno_old: bankaccountnoOld,
+      p_banksortcode: banksortcode
+    })
+
+    console.log('✅ Subaccount updated:', response)
+
+    await fetchSubaccounts()
+
+    return response
+  } catch (err) {
+    console.error('❌ Failed to update subaccount:', err)
+
+    error.value =
+      err instanceof Error
+        ? err.message
+        : 'Failed to update subaccount'
+
+    throw err
+  } finally {
+    loading.value = false
+  }
+}
+
+  return {
+  subaccounts,
+  loading,
+  error,
+  searchQuery,
+  filteredSubaccounts,
+  totalSubaccounts,
+  fetchSubaccounts,
+  addSubaccount,
+  updateSubaccount
+}
 })

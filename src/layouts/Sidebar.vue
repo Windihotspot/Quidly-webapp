@@ -144,7 +144,7 @@ const menuItems = [
       },
       {
         label: 'Banks',
-        to: '/accounts/banks',
+        to: '/banks',
       },
       {
         label: 'Settlement',

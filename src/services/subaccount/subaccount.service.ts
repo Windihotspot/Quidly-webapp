@@ -55,7 +55,93 @@ export async function getSubaccounts(
     throw error
   }
 }
+// addsubaccounts
+export interface AddSubaccountPayload {
+  p_accountid: string
+  p_merchantid: string
+  p_subaccountname: string
+  p_quidlyuserid: string
+  p_bankid: string
+  p_bankaccountno: number
+}
 
+export interface AddSubaccountResponse {
+  status: number
+  subaccount?: {
+    subaccountID: string
+    bank?: {
+      bankDetails: string
+    }
+  }
+  error?: string
+}
+
+export async function addSubaccount(
+  payload: AddSubaccountPayload
+): Promise<AddSubaccountResponse> {
+  try {
+    const response = await post<AddSubaccountResponse>(
+      '/add_subaccount_and_bank',
+      payload
+    )
+
+    console.log('➕ ADD SUBACCOUNT RESPONSE:', response.data)
+
+    if (response.data?.status !== 1) {
+      throw new Error(
+        response.data?.error || 'Failed to add subaccount'
+      )
+    }
+
+    return response.data
+  } catch (error) {
+    console.error('❌ Failed to add subaccount:', error)
+    throw error
+  }
+}
+
+// update subaccount
+export interface UpdateSubaccountPayload {
+  p_accountid: string
+  p_merchantid: string
+  p_subaccountid: string
+  p_quidlyuserid: string
+  p_bankid: string
+  p_bankaccountno: number
+  p_bankid_old: string
+  p_bankaccountno_old: number
+  p_banksortcode: number
+}
+
+export interface UpdateSubaccountResponse {
+  status: number
+  subaccount?: Record<string, unknown>
+  error?: string
+}
+
+export async function updateSubaccount(
+  payload: UpdateSubaccountPayload
+): Promise<UpdateSubaccountResponse> {
+  try {
+    const response = await post<UpdateSubaccountResponse>(
+      '/update_subaccount_bank',
+      payload
+    )
+
+    console.log('✏️ UPDATE SUBACCOUNT RESPONSE:', response.data)
+
+    if (response.data?.error) {
+      throw new Error(response.data.error)
+    }
+
+    return response.data
+  } catch (error) {
+    console.error('❌ Failed to update subaccount:', error)
+    throw error
+  }
+}
 export default {
-  getSubaccounts
+  getSubaccounts,
+  addSubaccount,
+  updateSubaccount
 }

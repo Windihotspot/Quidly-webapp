@@ -25,6 +25,15 @@ const quidlyRoutes: RouteRecordRaw[] = [
     },
   },
 
+  {
+    path: '/banks',
+    name: 'Banks',
+    component: () => import('@/views/accounts/Banks.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+  },
+
 ]
 
 export default quidlyRoutes

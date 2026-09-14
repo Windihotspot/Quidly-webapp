@@ -15,7 +15,17 @@ export const useBankStore = defineStore('bank', () => {
       return banks.value
     }
 
-    return banks.value
+    return banks.value.filter((bank) => {
+      const bankName = String(bank.bankname || '').toLowerCase()
+      const bankId = String(bank.bankid || '').toLowerCase()
+      const sortCode = String(bank.banksortcode || '').toLowerCase()
+
+      return (
+        bankName.includes(query) ||
+        bankId.includes(query) ||
+        sortCode.includes(query)
+      )
+    })
   })
 
   const totalBanks = computed(() => banks.value.length)
@@ -29,13 +39,15 @@ export const useBankStore = defineStore('bank', () => {
 
       console.log('🏦 BANK DATA:', data)
 
-      // We will map this once we know the actual API response shape.
       banks.value = Array.isArray(data) ? data : []
     } catch (err) {
       console.error('❌ Failed to fetch banks:', err)
-      error.value = err instanceof Error
-        ? err.message
-        : 'Failed to load registered banks'
+
+      error.value =
+        err instanceof Error
+          ? err.message
+          : 'Failed to load registered banks'
+
       banks.value = []
     } finally {
       loading.value = false

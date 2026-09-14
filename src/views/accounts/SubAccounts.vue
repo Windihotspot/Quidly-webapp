@@ -346,14 +346,17 @@ onMounted(async () => {
             </div>
           </div>
 
-          <!-- Search -->
-          <div class="flex items-center justify-between gap-4 border-b border-slate-100 px-4 py-3">
-            <div class="relative w-full max-w-sm">
+          <!-- Search & Filter -->
+          <div
+            class="flex flex-col sm:flex-row sm:items-center gap-3 px-4 sm:px-5 py-3.5 border-b border-slate-100"
+          >
+            <div class="relative w-full sm:max-w-xs">
               <span
-                class="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-sm text-slate-400"
+                class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-slate-400 text-sm"
               >
                 ⌕
               </span>
+
               <input
                 v-model="searchQuery"
                 type="search"
@@ -362,37 +365,12 @@ onMounted(async () => {
               />
             </div>
 
+            <!-- Status -->
             <button
               type="button"
-              class="flex shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              class="flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 transition"
             >
               All statuses
-            </button>
-          </div>
-
-          <!-- Loading -->
-          <div v-if="loading" class="px-5 py-14 text-center">
-            <div
-              class="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-slate-200 border-t-[#5f9918]"
-            ></div>
-            <p class="mt-4 text-sm font-medium text-slate-700">Loading sub-accounts...</p>
-            <p class="mt-1 text-xs text-slate-400">Fetching your sub-accounts</p>
-          </div>
-
-          <!-- Error -->
-          <div v-else-if="error" class="px-5 py-14 text-center">
-            <div
-              class="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-red-50 text-red-600"
-            >
-              !
-            </div>
-            <p class="mt-3 text-sm font-medium text-red-600">{{ error }}</p>
-            <button
-              type="button"
-              class="mt-4 rounded-lg bg-[#5f9918] px-4 py-2 text-sm font-medium text-white transition hover:bg-[#4d7c13]"
-              @click="fetchSubaccounts"
-            >
-              Try again
             </button>
           </div>
 

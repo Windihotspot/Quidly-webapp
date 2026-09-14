@@ -2,31 +2,39 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import BankService from '@/services/subaccount/bank.service'
 
+export interface Bank {
+  bankid: string
+  bankname: string
+  status: number
+  code?: string
+  longcode?: string
+}
+
 export const useBankStore = defineStore('bank', () => {
-  const banks = ref<any[]>([])
+  const banks = ref<Bank[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const searchQuery = ref('')
 
-  const filteredBanks = computed(() => {
-    const query = searchQuery.value.trim().toLowerCase()
+  /**
+   * Search registered banks.
+   * This is used by the Select Bank autocomplete.
+   */
+  const searchBanks = (query: string) => {
+    const search = query.trim().toLowerCase()
 
-    if (!query) {
+    if (!search) {
       return banks.value
     }
 
     return banks.value.filter((bank) => {
-      const bankName = String(bank.bankname || '').toLowerCase()
-      const bankId = String(bank.bankid || '').toLowerCase()
-      const sortCode = String(bank.banksortcode || '').toLowerCase()
-
       return (
-        bankName.includes(query) ||
-        bankId.includes(query) ||
-        sortCode.includes(query)
+        bank.bankname.toLowerCase().includes(search) ||
+        bank.bankid.toLowerCase().includes(search) ||
+        bank.code?.toLowerCase().includes(search) ||
+        bank.longcode?.toLowerCase().includes(search)
       )
     })
-  })
+  }
 
   const totalBanks = computed(() => banks.value.length)
 
@@ -39,7 +47,20 @@ export const useBankStore = defineStore('bank', () => {
 
       console.log('🏦 BANK DATA:', data)
 
-      banks.value = Array.isArray(data) ? data : []
+      if (Array.isArray(data?.jsresult)) {
+        banks.value = data.jsresult.filter(
+          (bank: Bank) =>
+            bank &&
+            bank.status === 1 &&
+            bank.bankid &&
+            bank.bankname
+        )
+      } else {
+        banks.value = []
+        error.value = 'No registered banks were returned'
+      }
+
+      console.log('🏦 REGISTERED BANKS:', banks.value)
     } catch (err) {
       console.error('❌ Failed to fetch banks:', err)
 
@@ -58,9 +79,8 @@ export const useBankStore = defineStore('bank', () => {
     banks,
     loading,
     error,
-    searchQuery,
-    filteredBanks,
     totalBanks,
+    searchBanks,
     fetchBanks
   }
 })

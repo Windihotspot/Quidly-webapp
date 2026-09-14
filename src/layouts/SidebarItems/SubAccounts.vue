@@ -195,6 +195,7 @@ function submitAddSubaccount() {
                     <h3 class="text-sm font-semibold text-slate-900 truncate">
                       {{ account.name }}
                     </h3>
+
                     <span
                       class="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
                       :class="
@@ -206,6 +207,7 @@ function submitAddSubaccount() {
                       {{ account.status === 'active' ? 'Active' : 'Inactive' }}
                     </span>
                   </div>
+
                   <p class="mt-0.5 text-xs text-slate-500 truncate">
                     {{ account.id }}
                   </p>
@@ -214,6 +216,7 @@ function submitAddSubaccount() {
 
               <!-- Actions -->
               <div class="flex items-center gap-2 pl-11 sm:pl-0 shrink-0">
+                <!-- Edit -->
                 <button
                   type="button"
                   class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition"
@@ -224,6 +227,7 @@ function submitAddSubaccount() {
                   ✎
                 </button>
 
+                <!-- Status Toggle -->
                 <label
                   class="relative inline-flex cursor-pointer items-center"
                   title="Activate or disable sub-account"
@@ -234,11 +238,13 @@ function submitAddSubaccount() {
                     :checked="account.status === 'active'"
                     @change="toggleAccountStatus(account)"
                   />
+
                   <span
                     class="relative h-5 w-9 rounded-full bg-slate-200 transition-colors duration-200 peer-checked:bg-[#5f9918] peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#5f9918] peer-focus:ring-offset-1 after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-transform after:duration-200 after:content-[''] peer-checked:after:translate-x-4"
                   ></span>
                 </label>
 
+                <!-- Delete -->
                 <button
                   type="button"
                   class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-red-50 hover:text-red-600 transition"
@@ -251,7 +257,7 @@ function submitAddSubaccount() {
               </div>
             </article>
 
-            <!-- Empty state -->
+            <!-- Empty State -->
             <div
               v-if="filteredSubaccounts.length === 0"
               class="px-5 py-14 text-center text-sm text-slate-500"
@@ -424,9 +430,6 @@ function submitAddSubaccount() {
       </div>
     </Teleport>
 
-    <!-- ========================================= -->
-    <!-- EDIT SUB-ACCOUNT MODAL (smaller + centered) -->
-    <!-- ========================================= -->
     <!-- ========================================= -->
     <!-- EDIT SUB-ACCOUNT POPUP CARD -->
     <!-- ========================================= -->

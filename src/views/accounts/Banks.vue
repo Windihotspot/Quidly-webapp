@@ -3,28 +3,26 @@ import { onMounted, ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import MainLayout from '@/layouts/MainLayout.vue'
-import { useBankStore } from '@/stores/bank'
+import { useBankStore, type Bank } from '@/stores/bank'
 import { useAuthStore } from '@/stores/auth'
 
 const bankStore = useBankStore()
 const authStore = useAuthStore()
 
-const { searchQuery, filteredBanks, totalBanks, loading, error } = storeToRefs(bankStore)
+const { banks, loading, error } = storeToRefs(bankStore)
 
 const { fetchBanks } = bankStore
 
-const bankSearch = ref('')
-const showBankDropdown = ref(false)
-
 const showAddCard = ref(false)
+const isSubmitting = ref(false)
+
+const selectedBank = ref<Bank | null>(null)
 
 const form = ref({
   bankId: '',
   accountNo: '',
   accountName: ''
 })
-
-const isSubmitting = ref(false)
 
 const { activeMerchantId, activeMerchant } = storeToRefs(authStore)
 
@@ -33,37 +31,52 @@ const merchantId = computed(() => {
 })
 
 const merchantDisplayName = computed(() => {
-  return activeMerchant.value?.YOUR_ACTUAL_DISPLAY_NAME_FIELD || 'Merchant'
+  return (
+    activeMerchant.value?.merchantName ||
+    activeMerchant.value?.name ||
+    activeMerchant.value?.businessName ||
+    activeMerchantId.value ||
+    'Merchant'
+  )
 })
 
 // --------------------------------------------------
-// BANK DROPDOWN
+// BANK AUTOCOMPLETE FILTER
 // --------------------------------------------------
 
-const dropdownBanks = computed(() => {
-  const query = bankSearch.value.trim().toLowerCase()
+function bankFilter(_value: string, query: string, item: any) {
+  const bank = item?.raw as Bank | undefined
 
-  if (!query) {
-    return bankStore.banks
-  }
+  if (!bank) return false
 
-  return bankStore.banks.filter((bank) => {
-    const bankName = String(bank.bankname || '').toLowerCase()
-    const bankId = String(bank.bankid || '').toLowerCase()
-    const sortCode = String(bank.banksortcode || '').toLowerCase()
+  const search = query.trim().toLowerCase()
 
-    return bankName.includes(query) || bankId.includes(query) || sortCode.includes(query)
-  })
-})
+  // Show all banks when nothing has been typed
+  if (!search) return true
 
-function selectBank(bank: any) {
-  form.value.bankId = bank.bankid
-  bankSearch.value = bank.bankname
-  showBankDropdown.value = false
+  const bankName = bank.bankname?.toLowerCase() || ''
+  const bankId = bank.bankid?.toLowerCase() || ''
+  const code = bank.code?.toLowerCase() || ''
+  const longCode = bank.longcode?.toLowerCase() || ''
+
+  return (
+    bankName.includes(search) ||
+    bankId.includes(search) ||
+    code.includes(search) ||
+    longCode.includes(search)
+  )
+}
+// --------------------------------------------------
+// BANK SELECTION
+// --------------------------------------------------
+
+function handleBankChange(bank: Bank | null) {
+  selectedBank.value = bank
+  form.value.bankId = bank?.bankid || ''
 }
 
 // --------------------------------------------------
-// ADD BANK CARD
+// ADD BANK ACCOUNT MODAL
 // --------------------------------------------------
 
 function openAddCard() {
@@ -73,15 +86,30 @@ function openAddCard() {
     accountName: ''
   }
 
-  bankSearch.value = ''
-  showBankDropdown.value = false
+  selectedBank.value = null
+
   showAddCard.value = true
 }
 
 function closeAddCard() {
+  if (isSubmitting.value) {
+    return
+  }
+
   showAddCard.value = false
-  showBankDropdown.value = false
+
+  selectedBank.value = null
+
+  form.value = {
+    bankId: '',
+    accountNo: '',
+    accountName: ''
+  }
 }
+
+// --------------------------------------------------
+// SUBMIT
+// --------------------------------------------------
 
 async function submitNewBank() {
   if (!form.value.bankId || !form.value.accountNo || !form.value.accountName) {
@@ -91,26 +119,24 @@ async function submitNewBank() {
   isSubmitting.value = true
 
   try {
-    console.log('🏦 NEW BANK ACCOUNT:', form.value)
+    console.log('🏦 NEW BANK ACCOUNT:', {
+      merchantId: merchantId.value,
+      bankId: form.value.bankId,
+      accountNo: form.value.accountNo,
+      accountName: form.value.accountName
+    })
 
     // TODO:
-    // await bankStore.addBankAccount({
-    //   bankId: form.value.bankId,
-    //   accountNo: form.value.accountNo,
-    //   accountName: form.value.accountName
-    // })
+    // Call your add-bank-account API here.
 
     closeAddCard()
+  } catch (err) {
+    console.error('❌ Failed to add bank account:', err)
   } finally {
     isSubmitting.value = false
   }
 }
 
-
-function handleBankInput() {
-  showBankDropdown.value = true
-  form.value.bankId = ''
-}
 // --------------------------------------------------
 // LOAD REGISTERED BANKS
 // --------------------------------------------------
@@ -119,22 +145,61 @@ onMounted(async () => {
   await fetchBanks()
 })
 </script>
-
+<style scoped>
+:deep(.quidly-bank-autocomplete .v-field) {
+  border-radius: 12px;
+  min-height: 44px;
+  background: #ffffff;
+}
+:deep(.quidly-bank-autocomplete .v-field__input) {
+  font-size: 12px;
+  font-weight: 500;
+  color: #1e293b;
+}
+:deep(.quidly-bank-autocomplete .v-field__input input::placeholder) {
+  color: #94a3b8;
+  opacity: 1;
+}
+:deep(.quidly-bank-autocomplete .v-field--focused) {
+  box-shadow: 0 0 0 2px rgba(95, 153, 24, 0.08);
+}
+:deep(.quidly-bank-autocomplete .v-field--focused .v-field__outline) {
+  color: #5f9918;
+}
+:deep(.quidly-bank-autocomplete .v-list) {
+  padding: 6px;
+}
+:deep(.quidly-bank-autocomplete .v-list-item) {
+  min-height: 52px;
+  border-radius: 10px;
+  margin-bottom: 2px;
+}
+:deep(.quidly-bank-autocomplete .v-list-item:hover) {
+  background: #f5faf9;
+}
+:deep(.quidly-bank-autocomplete .v-list-item--active) {
+  background: rgba(95, 153, 24, 0.07);
+}
+:deep(.quidly-bank-autocomplete .v-list-item--active .v-list-item-title) {
+  color: #4d7c13 !important;
+}
+</style>
 <template>
   <MainLayout>
     <div class="min-h-screen bg-[#f5faf9] px-4 py-6 sm:px-6 lg:px-8">
       <!-- Header -->
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+      <div class="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Bank Management</h1>
-          <p class="mt-1.5 text-sm text-slate-600 max-w-xl">
+          <h1 class="text-2xl font-bold tracking-tight text-slate-900">Bank Management</h1>
+
+          <p class="mt-1.5 max-w-xl text-sm text-slate-600">
             Manage bank accounts connected to your Quidly merchant account.
           </p>
         </div>
 
         <button
           type="button"
-          class="inline-flex items-center justify-center gap-2 rounded-xl bg-[#5f9918] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#4d7c13] focus:outline-none focus:ring-2 focus:ring-[#5f9918] focus:ring-offset-2 transition w-full sm:w-auto"
+          class="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#5f9918] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4d7c13] focus:outline-none focus:ring-2 focus:ring-[#5f9918] focus:ring-offset-2 sm:w-auto"
           @click="openAddCard"
         >
           <span class="text-lg leading-none">＋</span>
@@ -143,138 +208,67 @@ onMounted(async () => {
       </div>
 
       <!-- Content -->
-      <div class="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-5">
-        <!-- Main Card -->
-        <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-          <!-- Section Toolbar -->
-          <div
-            class="flex flex-col gap-4 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5"
-          >
-            <!-- Title + Merchant -->
-            <div class="min-w-0">
-              <div class="flex items-center gap-3">
-                <div
-                  class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#5f9918]/10 text-[#5f9918]"
-                >
-                  🏦
-                </div>
+      <div class="grid grid-cols-1 gap-5 xl:grid-cols-[1fr_280px]">
+        <!-- Main Bank Accounts Card -->
+        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <!-- Card Header -->
+          <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+            <div class="flex items-center gap-3">
+              <div
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#5f9918]/10 text-[#5f9918]"
+              >
+                🏦
+              </div>
 
-                <div class="min-w-0">
-                  <h2 class="text-base font-semibold leading-tight text-slate-900">
-                    Bank Accounts
-                  </h2>
+              <div>
+                <h2 class="text-base font-semibold text-slate-900">Bank Accounts</h2>
 
-                  <div class="mt-1 flex items-center gap-2">
-                    <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
-                      Merchant ID
-                    </span>
+                <div class="mt-1 flex items-center gap-2">
+                  <span class="text-[10px] font-medium uppercase tracking-wider text-slate-400">
+                    Merchant ID
+                  </span>
 
-                    <span class="h-1 w-1 rounded-full bg-slate-300"></span>
+                  <span class="h-1 w-1 rounded-full bg-slate-300"></span>
 
-                    <span
-                      class="max-w-[220px] truncate text-[11px] font-medium text-slate-600"
-                      :title="merchantId || 'No merchant selected'"
-                    >
-                      {{ merchantId || 'No merchant selected' }}
-                    </span>
-                  </div>
+                  <span
+                    class="max-w-[220px] truncate text-[11px] font-medium text-slate-600"
+                    :title="merchantId || 'No merchant selected'"
+                  >
+                    {{ merchantId || 'No merchant selected' }}
+                  </span>
                 </div>
               </div>
             </div>
-
-            <!-- Bank Count -->
-            <div class="flex items-center gap-2 sm:shrink-0">
-              <span class="text-2xl font-bold leading-none text-slate-900">
-                {{ totalBanks }}
-              </span>
-
-              <span class="text-xs text-slate-500"> Registered banks </span>
-            </div>
           </div>
-          <!-- Search & Filter -->
-          <div class="flex items-center justify-between gap-4 px-4 py-3 border-b border-slate-100">
-            <div class="relative w-full max-w-sm">
-              <span
-                class="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-slate-400 text-sm"
-              >
-                ⌕
-              </span>
-              <input
-                v-model="searchQuery"
-                type="search"
-                placeholder="Search sub-accounts"
-                class="w-full rounded-lg border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:bg-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
+
+          <!-- Empty Connected Accounts State -->
+          <div class="px-5 py-16 text-center">
+            <div
+              class="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#5f9918]/10 text-2xl"
+            >
+              🏦
             </div>
+
+            <h3 class="mt-4 text-sm font-semibold text-slate-900">No bank accounts connected</h3>
+
+            <p class="mx-auto mt-1.5 max-w-sm text-xs leading-relaxed text-slate-500">
+              Add a bank account to your Quidly merchant account to get started.
+            </p>
 
             <button
               type="button"
-              class="flex shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              class="mt-5 inline-flex items-center gap-2 rounded-xl bg-[#5f9918] px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-[#4d7c13]"
+              @click="openAddCard"
             >
-              All statuses
+              <span class="text-base">＋</span>
+              Add Bank Account
             </button>
-          </div>
-
-          <!-- Bank List -->
-          <div class="divide-y divide-slate-100">
-            <div v-if="loading" class="px-5 py-14 text-center text-sm text-slate-500">
-              Loading registered banks...
-            </div>
-
-            <div v-else-if="error" class="px-5 py-14 text-center">
-              <p class="text-sm font-medium text-red-600">{{ error }}</p>
-              <button
-                type="button"
-                @click="fetchBanks"
-                class="mt-3 rounded-lg bg-[#5f9918] px-4 py-2 text-sm font-medium text-white hover:bg-[#4d7c13]"
-              >
-                Try again
-              </button>
-            </div>
-
-            <template v-else>
-              <article
-                v-for="bank in filteredBanks"
-                :key="bank.bankid"
-                class="flex items-center justify-between gap-4 px-4 py-4 sm:px-5 hover:bg-[#f5faf9] transition"
-              >
-                <div class="flex items-center gap-3 min-w-0">
-                  <div
-                    class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#5f9918]/10 text-[#5f9918]"
-                  >
-                    🏦
-                  </div>
-                  <div class="min-w-0">
-                    <h3 class="text-sm font-semibold text-slate-900 truncate">
-                      {{ bank.bankname }}
-                    </h3>
-                    <p class="mt-0.5 text-xs text-slate-500 truncate">
-                      {{ bank.bankid }}
-                    </p>
-                  </div>
-                </div>
-
-                <div class="hidden sm:block text-right">
-                  <p class="text-[11px] uppercase tracking-wide text-slate-400">Sort Code</p>
-                  <p class="mt-0.5 text-sm font-medium text-slate-700">
-                    {{ bank.banksortcode || '—' }}
-                  </p>
-                </div>
-              </article>
-
-              <div
-                v-if="filteredBanks.length === 0"
-                class="px-5 py-14 text-center text-sm text-slate-500"
-              >
-                No banks found.
-              </div>
-            </template>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- ===================== SMALL CENTERED ADD BANK CARD ===================== -->
+    <!-- ===================== ADD BANK MODAL ===================== -->
 
     <Teleport to="body">
       <div
@@ -284,7 +278,7 @@ onMounted(async () => {
         <!-- Backdrop -->
         <div class="absolute inset-0 bg-slate-950/45 backdrop-blur-sm" @click="closeAddCard" />
 
-        <!-- Add Bank Modal -->
+        <!-- Modal -->
         <div
           class="relative w-full max-w-[380px] overflow-visible rounded-2xl bg-white shadow-2xl ring-1 ring-slate-200"
           role="dialog"
@@ -293,32 +287,30 @@ onMounted(async () => {
         >
           <!-- ================= HEADER ================= -->
           <div class="flex items-start justify-between border-b border-slate-100 px-5 py-4">
-            <div>
-              <div class="flex items-center gap-2.5">
-                <div
-                  class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#5f9918]/10 text-[#5f9918]"
-                >
-                  🏦
-                </div>
+            <div class="flex items-center gap-2.5">
+              <div
+                class="flex h-9 w-9 items-center justify-center rounded-xl bg-[#5f9918]/10 text-[#5f9918]"
+              >
+                🏦
+              </div>
 
-                <div>
-                  <h2 id="add-bank-title" class="text-sm font-bold text-slate-900">
-                    Add Bank Account
-                  </h2>
+              <div>
+                <h2 id="add-bank-title" class="text-sm font-bold text-slate-900">
+                  Add Bank Account
+                </h2>
 
-                  <p class="mt-0.5 text-[10px] text-slate-500">
-                    Connect a bank account to your merchant
-                  </p>
-                </div>
+                <p class="mt-0.5 text-[10px] text-slate-500">
+                  Connect a bank account to your merchant
+                </p>
               </div>
             </div>
 
             <button
               type="button"
-              class="flex h-7 w-7 items-center justify-center rounded-lg text-lg leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
-              @click="closeAddCard"
+              class="flex h-7 w-7 items-center justify-center rounded-lg text-lg leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
               :disabled="isSubmitting"
               aria-label="Close"
+              @click="closeAddCard"
             >
               ×
             </button>
@@ -367,126 +359,237 @@ onMounted(async () => {
             </div>
 
             <!-- ================= BANK SELECT ================= -->
-            <div class="relative">
+            <!-- ================= BANK SELECT ================= -->
+            <div>
               <label
-                for="bank-search"
-                class="mb-1.5 block text-[11px] font-semibold text-slate-700"
+                for="bank-select"
+                class="mb-1.5 block text-[11px] font-semibold tracking-wide text-slate-700"
               >
                 Select Bank
               </label>
-
-              <!-- Input -->
-              <div class="relative">
-                <!-- Bank icon -->
-                <span class="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm">
-                  🏦
-                </span>
-
-                <input
-                  id="bank-search"
-                  v-model="bankSearch"
-                  type="text"
-                  autocomplete="off"
-                  placeholder="Search or select a bank"
-                  class="w-full rounded-xl border border-slate-200 bg-white py-2.5 pl-9 pr-9 text-xs text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-[#5f9918] focus:ring-2 focus:ring-[#5f9918]/10"
-                  @focus="showBankDropdown = true"
-                  @input="handleBankInput"
-                />
-
-                <!-- Dropdown arrow -->
-                <span
-                  class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 transition"
-                  :class="{ 'rotate-180': showBankDropdown }"
-                >
-                  ▼
-                </span>
-              </div>
-
-              <!-- Selected bank indicator -->
-              <div
-                v-if="form.bankId && !showBankDropdown"
-                class="mt-1.5 flex items-center gap-1.5 text-[10px] text-[#5f9918]"
-              >
-                <span>✓</span>
-                <span>Bank selected</span>
-              </div>
-
-              <!-- ================= BANK DROPDOWN ================= -->
-              <div
-                v-if="showBankDropdown"
-                class="absolute left-0 right-0 top-full z-[100] mt-1.5 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl"
+              <v-autocomplete
+                id="bank-select"
+                v-model="selectedBank"
+                :items="banks"
+                item-title="bankname"
+                item-value="bankid"
+                return-object
+                variant="outlined"
+                density="comfortable"
+                placeholder="Search by bank name"
+                :loading="loading"
+                :disabled="loading"
+                :custom-filter="bankFilter"
+                clearable
+                hide-details
+                no-data-text="No matching banks found"
+                class="quidly-bank-autocomplete"
+                :menu-props="{ zIndex: 10001, maxHeight: 280 }"
+                @update:model-value="handleBankChange"
               >
                 <!-- Loading -->
-                <div v-if="loading" class="flex items-center justify-center gap-2 px-4 py-6">
-                  <span
-                    class="h-4 w-4 animate-spin rounded-full border-2 border-slate-200 border-t-[#5f9918]"
-                  />
-
-                  <span class="text-[11px] text-slate-500"> Loading banks... </span>
-                </div>
-
-                <!-- Error -->
-                <div v-else-if="error" class="px-4 py-5 text-center">
-                  <div class="text-lg">⚠️</div>
-
-                  <p class="mt-1 text-[11px] font-medium text-red-600">Unable to load banks</p>
-
-                  <button
-                    type="button"
-                    class="mt-2 text-[10px] font-semibold text-[#5f9918] hover:underline"
-                    @click="fetchBanks"
-                  >
-                    Try again
-                  </button>
-                </div>
-
-                <!-- No Banks -->
-                <div v-else-if="dropdownBanks.length === 0" class="px-4 py-6 text-center">
-                  <div class="text-lg">🔍</div>
-
-                  <p class="mt-1 text-[11px] text-slate-500">No banks found</p>
-                </div>
-
+                <template #loader>
+                  <v-progress-linear indeterminate color="#5f9918" height="2" />
+                </template>
+                <!-- Search Icon -->
+                <template #prepend-inner>
+                  <div class="flex items-center justify-center text-slate-400">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <circle cx="11" cy="11" r="7" />
+                      <path d="m20 20-3.5-3.5" />
+                    </svg>
+                  </div>
+                </template>
                 <!-- Bank List -->
-                <div v-else class="max-h-[230px] overflow-y-auto py-1">
-                  <button
-                    v-for="bank in dropdownBanks"
-                    :key="bank.bankid"
-                    type="button"
-                    class="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition hover:bg-[#f5faf9]"
-                    :class="{
-                      'bg-[#f5faf9]': form.bankId === bank.bankid
-                    }"
-                    @click="selectBank(bank)"
+                <template #item="{ props, item }">
+                  <v-list-item v-bind="props" class="bank-option">
+                    <template #prepend>
+                      <div
+                        class="mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="17"
+                          height="17"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          class="text-[#5f9918]"
+                        >
+                          <path d="M3 10h18" />
+                          <path d="M5 10v8" />
+                          <path d="M9 10v8" />
+                          <path d="M15 10v8" />
+                          <path d="M19 10v8" />
+                          <path d="M3 18h18" />
+                          <path d="m12 3 9 5H3l9-5Z" />
+                        </svg>
+                      </div>
+                    </template>
+                    <v-list-item-title class="!text-xs !font-semibold !text-slate-800">
+                      {{ item.raw.bankname }}
+                    </v-list-item-title>
+                    <v-list-item-subtitle
+                      v-if="item.raw.code"
+                      class="!mt-0.5 !text-[10px] !text-slate-400"
+                    >
+                      Bank code {{ item.raw.code }}
+                    </v-list-item-subtitle>
+                    <template #append>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="15"
+                        height="15"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="text-slate-300"
+                      >
+                        <path d="m9 18 6-6-6-6" />
+                      </svg>
+                    </template>
+                  </v-list-item>
+                </template>
+                <!-- Selected Bank -->
+                <template #selection="{ item }">
+                  <div class="flex min-w-0 items-center gap-2">
+                    <div
+                      class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#5f9918]/10"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="text-[#5f9918]"
+                      >
+                        <path d="M3 10h18" />
+                        <path d="M5 10v8" />
+                        <path d="M9 10v8" />
+                        <path d="M15 10v8" />
+                        <path d="M19 10v8" />
+                        <path d="M3 18h18" />
+                        <path d="m12 3 9 5H3l9-5Z" />
+                      </svg>
+                    </div>
+                    <span class="truncate text-xs font-medium text-slate-800">
+                      {{ item.raw.bankname }}
+                    </span>
+                  </div>
+                </template>
+                <!-- No Results -->
+                <template #no-data>
+                  <div class="px-4 py-7 text-center">
+                    <div
+                      class="mx-auto flex h-9 w-9 items-center justify-center rounded-full bg-slate-100"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="text-slate-400"
+                      >
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="m20 20-3.5-3.5" />
+                      </svg>
+                    </div>
+                    <p class="mt-2 text-[11px] font-medium text-slate-600">
+                      No matching banks found
+                    </p>
+                    <p class="mt-0.5 text-[10px] text-slate-400">
+                      Try searching with a different bank name.
+                    </p>
+                  </div>
+                </template>
+              </v-autocomplete>
+              <!-- Selected Bank -->
+              <div
+                v-if="selectedBank"
+                class="mt-2 flex items-center justify-between rounded-lg border border-[#5f9918]/15 bg-[#5f9918]/5 px-3 py-2"
+              >
+                <div class="flex min-w-0 items-center gap-2">
+                  <div
+                    class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#5f9918]/10"
                   >
-                    <!-- Bank Icon -->
-                    <div
-                      class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#5f9918]/10 text-sm"
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      class="text-[#5f9918]"
                     >
-                      🏦
-                    </div>
-
-                    <!-- Bank Information -->
-                    <div class="min-w-0 flex-1">
-                      <p class="truncate text-xs font-semibold text-slate-800">
-                        {{ bank.bankname }}
-                      </p>
-
-                      <p v-if="bank.banksortcode" class="mt-0.5 text-[9px] text-slate-400">
-                        Sort code: {{ bank.banksortcode }}
-                      </p>
-                    </div>
-
-                    <!-- Selected Check -->
-                    <div
-                      v-if="form.bankId === bank.bankid"
-                      class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#5f9918] text-[10px] font-bold text-white"
-                    >
-                      ✓
-                    </div>
-                  </button>
+                      <path d="m5 12 4 4L19 6" />
+                    </svg>
+                  </div>
+                  <div class="min-w-0">
+                    <p class="truncate text-[10px] font-semibold text-slate-700">
+                      {{ selectedBank.bankname }}
+                    </p>
+                    <p v-if="selectedBank.code" class="text-[9px] text-slate-400">
+                      Bank code {{ selectedBank.code }}
+                    </p>
+                  </div>
                 </div>
+                <span
+                  class="shrink-0 text-[9px] font-semibold uppercase tracking-wide text-[#5f9918]"
+                >
+                  Selected
+                </span>
               </div>
+              <!-- Error -->
+              <p
+                v-if="error"
+                class="mt-1.5 flex items-center gap-1.5 text-[10px] font-medium text-red-600"
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 8v4" />
+                  <path d="M12 16h.01" />
+                </svg>
+                {{ error }}
+              </p>
             </div>
 
             <!-- ================= ACCOUNT NUMBER ================= -->
@@ -543,8 +646,8 @@ onMounted(async () => {
             <button
               type="button"
               class="rounded-lg px-3 py-2 text-xs font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
-              @click="closeAddCard"
               :disabled="isSubmitting"
+              @click="closeAddCard"
             >
               Cancel
             </button>

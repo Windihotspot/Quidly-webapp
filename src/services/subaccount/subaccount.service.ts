@@ -25,18 +25,12 @@ interface GetSubaccountsResponse {
   error?: string
 }
 
-export async function getSubaccounts(
-  accountId: string,
-  merchantId: string
-): Promise<Subaccount[]> {
+export async function getSubaccounts(accountId: string, merchantId: string): Promise<Subaccount[]> {
   try {
-    const response = await post<GetSubaccountsResponse>(
-      '/get_subaccounts_with_banks',
-      {
-        p_accountid: accountId,
-        p_merchantid: merchantId
-      }
-    )
+    const response = await post<GetSubaccountsResponse>('/get_subaccounts_with_banks', {
+      p_accountid: accountId,
+      p_merchantid: merchantId
+    })
 
     console.log('FULL SUBACCOUNT RESPONSE:', response)
     console.log('SUBACCOUNT RESPONSE DATA:', response.data)
@@ -55,7 +49,8 @@ export async function getSubaccounts(
     throw error
   }
 }
-// addsubaccounts
+
+// add subaccount
 export interface AddSubaccountPayload {
   p_accountid: string
   p_merchantid: string
@@ -76,21 +71,14 @@ export interface AddSubaccountResponse {
   error?: string
 }
 
-export async function addSubaccount(
-  payload: AddSubaccountPayload
-): Promise<AddSubaccountResponse> {
+export async function addSubaccount(payload: AddSubaccountPayload): Promise<AddSubaccountResponse> {
   try {
-    const response = await post<AddSubaccountResponse>(
-      '/add_subaccount_and_bank',
-      payload
-    )
+    const response = await post<AddSubaccountResponse>('/add_subaccount_and_bank', payload)
 
     console.log('➕ ADD SUBACCOUNT RESPONSE:', response.data)
 
     if (response.data?.status !== 1) {
-      throw new Error(
-        response.data?.error || 'Failed to add subaccount'
-      )
+      throw new Error(response.data?.error || 'Failed to add subaccount')
     }
 
     return response.data
@@ -123,10 +111,7 @@ export async function updateSubaccount(
   payload: UpdateSubaccountPayload
 ): Promise<UpdateSubaccountResponse> {
   try {
-    const response = await post<UpdateSubaccountResponse>(
-      '/update_subaccount_bank',
-      payload
-    )
+    const response = await post<UpdateSubaccountResponse>('/update_subaccount_bank', payload)
 
     console.log('✏️ UPDATE SUBACCOUNT RESPONSE:', response.data)
 
@@ -140,8 +125,87 @@ export async function updateSubaccount(
     throw error
   }
 }
+
+// update subaccount status (active / inactive)
+export interface UpdateSubaccountStatusPayload {
+  p_accountid: string
+  p_merchantid: string
+  p_subaccountid: string
+  p_quidlyuserid: string
+  p_status: number // 1 = active, 0 = inactive
+}
+
+export interface UpdateSubaccountStatusResponse {
+  status: number
+  error?: string
+}
+
+export async function updateSubaccountStatus(
+  payload: UpdateSubaccountStatusPayload
+): Promise<UpdateSubaccountStatusResponse> {
+  try {
+    const response = await post<UpdateSubaccountStatusResponse>(
+      '/update_subaccount_status',
+      payload
+    )
+
+    console.log('🔄 UPDATE SUBACCOUNT STATUS RESPONSE:', response.data)
+
+    if (response.data?.error) {
+      throw new Error(response.data.error)
+    }
+
+    if (response.data?.status !== 1) {
+      throw new Error(response.data?.error || 'Failed to update subaccount status')
+    }
+
+    return response.data
+  } catch (error) {
+    console.error('❌ Failed to update subaccount status:', error)
+    throw error
+  }
+}
+
+// delete subaccount
+export interface DeleteSubaccountPayload {
+  p_accountid: string
+  p_merchantid: string
+  p_subaccountid: string
+  p_quidlyuserid: string
+}
+
+export interface DeleteSubaccountResponse {
+  status: number
+  error?: string
+}
+
+export async function deleteSubaccount(
+  payload: DeleteSubaccountPayload
+): Promise<DeleteSubaccountResponse> {
+  try {
+    const response = await post<DeleteSubaccountResponse>('/delete_subaccount', payload)
+
+    console.log('🗑 DELETE SUBACCOUNT RESPONSE:', response.data)
+
+    if (response.data?.error) {
+      throw new Error(response.data.error)
+    }
+
+    if (response.data?.status !== 1) {
+      throw new Error(response.data?.error || 'Failed to delete subaccount')
+    }
+
+    return response.data
+  } catch (error) {
+    console.error('❌ Failed to delete subaccount:', error)
+    throw error
+  }
+}
+
 export default {
   getSubaccounts,
   addSubaccount,
-  updateSubaccount
+  updateSubaccount,
+  updateSubaccountStatus,
+  deleteSubaccount
 }

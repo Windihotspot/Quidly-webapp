@@ -5,7 +5,7 @@
         <!-- Header -->
         <div class="dashboard-header">
           <div>
-            <h1 class="page-title">Dashboard</h1>
+            <h1 class="page-title">Goodday, {{ displayName }}</h1>
             <p class="page-subtitle">A clear view of your payment activity and merchant performance.</p>
           </div>
         </div>
@@ -187,6 +187,9 @@
 import { ref, onMounted, computed, defineComponent } from 'vue'
 import VueApexCharts from 'vue3-apexcharts'
 
+import { useAuthStore } from '@/stores/auth'
+import { storeToRefs } from 'pinia'
+
 import {
   dashboardMetrics,
   chartData as initialChartData,
@@ -208,6 +211,10 @@ defineComponent({
 | Data
 -------------------------------------------------------------------------- */
 
+const authStore = useAuthStore()
+
+const {user} = storeToRefs(authStore)
+
 const metrics = ref<DashboardMetrics>(dashboardMetrics)
 
 const charts = ref<ChartData>(initialChartData)
@@ -218,6 +225,13 @@ const selectedPeriod = ref('30days')
 
 const lineChartReady = ref(false)
 const donutChartReady = ref(false)
+
+// User's full name
+const displayName = computed(() => {
+  if (!user.value) return 'Merchant Name'
+
+  return `${user.value.fname ?? ''} ${user.value.lname ?? ''}`.trim() || 'Merchant Name'
+})
 
 /* --------------------------------------------------------------------------
 | Computed

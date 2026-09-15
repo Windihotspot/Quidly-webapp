@@ -4,9 +4,12 @@ import { post } from '@/services/api/api.service'
  * Get all registered banks available for selection.
  */
 export async function getRegisteredBanks() {
-  const response = await post('/mdb/procedure/get_registered_banks', {
-    p_status: 1
-  })
+  const response = await post(
+    '/mdb/procedure/get_registered_banks',
+    {
+      p_status: 1
+    }
+  )
 
   console.log('🏦 REGISTERED BANK RESPONSE:', response?.data)
 

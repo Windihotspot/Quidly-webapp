@@ -16,11 +16,11 @@ const bankStore = useBankStore()
 const { searchQuery, filteredSubaccounts, totalSubaccounts, loading, error } =
   storeToRefs(subaccountStore)
 
-const { fetchSubaccounts, addSubaccount, updateSubaccountStatus, deleteSubaccount } =
+const { fetchSubaccounts, addSubaccount, updateSubaccount, updateSubaccountStatus } =
   subaccountStore
 
 // --------------------------------------------------
-// Bank selection
+// Registered banks
 // --------------------------------------------------
 
 const { banks, loading: bankLoading, error: bankError } = storeToRefs(bankStore)
@@ -62,6 +62,7 @@ function toggleSubaccountDetails(account: any) {
 const showDeleteModal = ref(false)
 const showAddModal = ref(false)
 const showEditModal = ref(false)
+
 const selectedAccount = ref<any>(null)
 
 // --------------------------------------------------
@@ -75,6 +76,124 @@ const addForm = ref({
 })
 
 // --------------------------------------------------
+// Edit subaccount form
+// --------------------------------------------------
+
+const editForm = ref({
+  bank: '',
+  accountNumber: '',
+  bankSortCode: 0,
+
+  // Old values required by backend
+  oldBank: '',
+  oldAccountNumber: ''
+})
+
+const editSelectedBank = ref<any>(null)
+const savingEdit = ref(false)
+
+function openEditSubaccount(account: any) {
+  if (!account?.subaccountid) return
+
+  selectedAccount.value = { ...account }
+
+  const activeBank = account.activeBank
+
+  editForm.value = {
+    bank: activeBank?.bankid || '',
+    accountNumber: activeBank?.bankaccountno || '',
+    bankSortCode: Number(activeBank?.banksortcode || 0),
+
+    oldBank: activeBank?.bankid || '',
+    oldAccountNumber: activeBank?.bankaccountno || ''
+  }
+
+  editSelectedBank.value =
+    banks.value.find((bank: any) => bank.bankid === activeBank?.bankid) || null
+
+  showEditModal.value = true
+}
+
+function closeEditModal() {
+  showEditModal.value = false
+  selectedAccount.value = null
+  editSelectedBank.value = null
+
+  editForm.value = {
+    bank: '',
+    accountNumber: '',
+    bankSortCode: 0,
+    oldBank: '',
+    oldAccountNumber: ''
+  }
+}
+
+function handleEditBankChange(bank: any) {
+  editSelectedBank.value = bank
+  editForm.value.bank = bank?.bankid || ''
+
+  /*
+   * If the registered bank API exposes a sort code through
+   * longcode/code, use it. Otherwise retain the existing sort code.
+   */
+  if (bank?.longcode) {
+    editForm.value.bankSortCode = Number(bank.longcode) || 0
+  } else if (bank?.code) {
+    editForm.value.bankSortCode = Number(bank.code) || 0
+  }
+}
+
+async function saveAccountChanges() {
+  const account = selectedAccount.value
+
+  if (!account?.subaccountid) {
+    console.error('❌ No subaccount selected for edit')
+    return
+  }
+
+  const bankId = editForm.value.bank.trim()
+  const accountNumber = editForm.value.accountNumber.trim()
+  const oldBankId = editForm.value.oldBank.trim()
+  const oldAccountNumber = editForm.value.oldAccountNumber.trim()
+
+  if (!bankId || !accountNumber) {
+    console.error('❌ Bank and account number are required')
+    return
+  }
+
+  if (!/^\d+$/.test(accountNumber)) {
+    console.error('❌ Bank account number must contain numbers only')
+    return
+  }
+
+  if (!oldBankId || !oldAccountNumber) {
+    console.error('❌ Existing bank details are missing')
+    return
+  }
+
+  savingEdit.value = true
+
+  try {
+    await updateSubaccount(
+      account.subaccountid,
+      bankId,
+      Number(accountNumber),
+      oldBankId,
+      Number(oldAccountNumber),
+      Number(editForm.value.bankSortCode || 0)
+    )
+
+    console.log('✅ Sub-account updated successfully')
+
+    closeEditModal()
+  } catch (err) {
+    console.error('❌ Failed to update sub-account:', err)
+  } finally {
+    savingEdit.value = false
+  }
+}
+
+// --------------------------------------------------
 // Toggle active / inactive
 // --------------------------------------------------
 
@@ -85,16 +204,26 @@ async function toggleAccountStatus(account: any) {
 
   try {
     await updateSubaccountStatus(account.subaccountid, nextStatus)
+
+    /*
+     * Re-sync with backend after successful status update.
+     * This keeps the UI consistent with the database.
+     */
+    await fetchSubaccounts()
+
+    console.log(`✅ Sub-account ${nextStatus === 1 ? 'activated' : 'deactivated'}`)
   } catch (err) {
     console.error('❌ Failed to toggle sub-account status:', err)
   }
 }
 
 // --------------------------------------------------
-// Delete
+// Delete = OLD STATUS 99 BEHAVIOR
 // --------------------------------------------------
 
 function openDeleteAccountModal(account: any) {
+  if (!account?.subaccountid) return
+
   selectedAccount.value = { ...account }
   showDeleteModal.value = true
 }
@@ -102,23 +231,6 @@ function openDeleteAccountModal(account: any) {
 function closeDeleteModal() {
   showDeleteModal.value = false
   selectedAccount.value = null
-}
-
-async function confirmDeleteAccount() {
-  const account = selectedAccount.value
-
-  if (!account?.subaccountid) {
-    console.error('❌ No subaccount selected for delete')
-    return
-  }
-
-  try {
-    await deleteSubaccount(account.subaccountid)
-    console.log('✅ Sub-account deleted')
-    closeDeleteModal()
-  } catch (err) {
-    console.error('❌ Failed to delete sub-account:', err)
-  }
 }
 
 // --------------------------------------------------
@@ -131,17 +243,20 @@ function openAddModal() {
     accountNumber: '',
     name: ''
   }
+
   selectedBank.value = null
   showAddModal.value = true
 }
 
 function closeAddModal() {
   showAddModal.value = false
+
   addForm.value = {
     bank: '',
     accountNumber: '',
     name: ''
   }
+
   selectedBank.value = null
 }
 
@@ -150,7 +265,9 @@ async function submitAddSubaccount() {
   const accountNumber = addForm.value.accountNumber.trim()
   const name = addForm.value.name.trim()
 
-  if (!bankId || !accountNumber || !name) return
+  if (!bankId || !accountNumber || !name) {
+    return
+  }
 
   if (!/^\d+$/.test(accountNumber)) {
     console.error('❌ Bank account number must contain numbers only')
@@ -159,9 +276,31 @@ async function submitAddSubaccount() {
 
   try {
     await addSubaccount(name, bankId, Number(accountNumber))
+
     closeAddModal()
   } catch (err) {
     console.error('❌ Failed to add sub-account:', err)
+  }
+}
+
+async function confirmDeleteAccount() {
+  const account = selectedAccount.value
+
+  if (!account?.subaccountid) {
+    console.error('❌ No subaccount selected for delete')
+    return
+  }
+
+  try {
+    console.log('🗑️ Deleting subaccount:', account.subaccountid)
+
+    await updateSubaccountStatus(account.subaccountid, 99)
+
+    console.log('✅ Sub-account deleted successfully')
+
+    closeDeleteModal()
+  } catch (err) {
+    console.error('❌ Failed to delete sub-account:', err)
   }
 }
 
@@ -173,6 +312,7 @@ onMounted(async () => {
   await Promise.all([fetchSubaccounts(), bankStore.fetchBanks()])
 })
 </script>
+
 <style>
 .modal-enter-active,
 .modal-leave-active {
@@ -382,7 +522,7 @@ onMounted(async () => {
 
                 <!-- Actions -->
                 <div class="flex shrink-0 items-center gap-2 pl-11 sm:pl-0">
-                  <!-- <button
+                  <button
                     type="button"
                     class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
                     title="Edit sub-account"
@@ -390,7 +530,7 @@ onMounted(async () => {
                     @click="openEditSubaccount(account)"
                   >
                     ✎
-                  </button> -->
+                  </button>
 
                   <label
                     class="relative inline-flex cursor-pointer items-center"
@@ -886,45 +1026,73 @@ onMounted(async () => {
     </Teleport>
 
     <!-- EDIT SUB-ACCOUNT MODAL -->
+    <!-- EDIT SUB-ACCOUNT MODAL -->
     <Teleport to="body">
       <div
         v-if="showEditModal && selectedAccount"
         class="fixed inset-0 z-[9999] flex items-center justify-center p-4"
       >
-        <div class="absolute inset-0 bg-black/20 backdrop-blur-[2px]" @click="closeEditModal"></div>
-
+        <!-- Backdrop -->
         <div
-          class="relative w-full max-w-[340px] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+          class="absolute inset-0 bg-slate-950/50 backdrop-blur-sm"
+          @click="closeEditModal"
+        ></div>
+
+        <!-- Modal -->
+        <div
+          class="relative w-full max-w-md overflow-visible rounded-2xl bg-white shadow-2xl"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="edit-subaccount-title"
         >
-          <div class="flex items-center justify-between px-4 pb-3 pt-4">
-            <div>
-              <h3 class="text-sm font-semibold text-slate-900">Edit Sub-account</h3>
-              <p class="mt-0.5 text-xs text-slate-500">Update account details</p>
+          <!-- Header -->
+          <div class="px-6 pb-4 pt-6">
+            <div class="flex items-start justify-between">
+              <div>
+                <h2
+                  id="edit-subaccount-title"
+                  class="text-xl font-bold tracking-tight text-slate-900"
+                >
+                  Edit Sub-account
+                </h2>
+
+                <p class="mt-1.5 text-sm text-slate-500">
+                  Update the bank details connected to this sub-account.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                @click="closeEditModal"
+                aria-label="Close modal"
+              >
+                ✕
+              </button>
             </div>
-            <button
-              type="button"
-              class="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
-              @click="closeEditModal"
-            >
-              ✕
-            </button>
           </div>
 
-          <div class="space-y-3 px-4 pb-4">
-            <div class="flex items-center gap-2.5 rounded-xl bg-slate-50 px-3 py-2.5">
+          <!-- Account summary -->
+          <div class="px-6 pb-4">
+            <div
+              class="flex items-center gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3.5 py-3"
+            >
               <div
-                class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#5f9918] text-xs font-bold text-white"
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#5f9918] text-sm font-bold text-white"
               >
                 {{ selectedAccount.subaccountname?.charAt(0)?.toUpperCase() }}
               </div>
+
               <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-medium text-slate-900">
+                <p class="truncate text-sm font-semibold text-slate-900">
                   {{ selectedAccount.subaccountname }}
                 </p>
-                <p class="truncate text-[11px] text-slate-500">
+
+                <p class="mt-0.5 truncate text-[11px] text-slate-500">
                   {{ selectedAccount.subaccountid }}
                 </p>
               </div>
+
               <span
                 class="rounded-full px-2 py-0.5 text-[10px] font-medium"
                 :class="
@@ -936,70 +1104,210 @@ onMounted(async () => {
                 {{ selectedAccount.status === 1 ? 'Active' : 'Inactive' }}
               </span>
             </div>
+          </div>
 
+          <!-- Form -->
+          <div class="space-y-5 px-6 pb-6">
+            <!-- Bank -->
             <div>
-              <label class="mb-1 block text-[11px] font-medium text-slate-600">
-                Account Name
+              <label class="mb-1.5 block text-[11px] font-semibold tracking-wide text-slate-700">
+                Select Bank
               </label>
-              <input
-                v-model="selectedAccount.subaccountname"
-                type="text"
-                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#5f9918] focus:ring-2 focus:ring-[#5f9918]/15"
-              />
-            </div>
 
-            <div>
-              <label class="mb-1 block text-[11px] font-medium text-slate-600">
-                Sub-account ID
-              </label>
-              <input
-                v-model="selectedAccount.subaccountid"
-                type="text"
-                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#5f9918] focus:ring-2 focus:ring-[#5f9918]/15"
-              />
-            </div>
-
-            <div>
-              <label class="mb-1 block text-[11px] font-medium text-slate-600">Account ID</label>
-              <input
-                v-model="selectedAccount.accountid"
-                type="text"
-                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#5f9918] focus:ring-2 focus:ring-[#5f9918]/15"
-              />
-            </div>
-
-            <div>
-              <label class="mb-1 block text-[11px] font-medium text-slate-600">Status</label>
-              <select
-                v-model.number="selectedAccount.status"
-                class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-900 outline-none transition focus:border-[#5f9918] focus:ring-2 focus:ring-[#5f9918]/15"
+              <v-autocomplete
+                v-model="editSelectedBank"
+                :items="banks"
+                item-title="bankname"
+                item-value="bankid"
+                return-object
+                variant="outlined"
+                density="comfortable"
+                placeholder="Search by bank name"
+                :loading="bankLoading"
+                :disabled="bankLoading || savingEdit"
+                :custom-filter="bankFilter"
+                clearable
+                hide-details
+                no-data-text="No matching banks found"
+                class="quidly-bank-autocomplete"
+                :menu-props="{
+                  zIndex: 10001,
+                  maxHeight: 280
+                }"
+                @update:model-value="handleEditBankChange"
               >
-                <option :value="1">Active</option>
-                <option :value="0">Inactive</option>
-              </select>
+                <template #loader>
+                  <v-progress-linear indeterminate color="#5f9918" height="2" />
+                </template>
+
+                <template #prepend-inner>
+                  <div class="flex items-center justify-center text-slate-400">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    >
+                      <circle cx="11" cy="11" r="7" />
+                      <path d="m20 20-3.5-3.5" />
+                    </svg>
+                  </div>
+                </template>
+
+                <template #item="{ props, item }">
+                  <v-list-item v-bind="props" class="bank-option">
+                    <template #prepend>
+                      <div
+                        class="mr-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50"
+                      >
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="17"
+                          height="17"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="1.8"
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          class="text-[#5f9918]"
+                        >
+                          <path d="M3 10h18" />
+                          <path d="M5 10v8" />
+                          <path d="M9 10v8" />
+                          <path d="M15 10v8" />
+                          <path d="M19 10v8" />
+                          <path d="M3 18h18" />
+                          <path d="m12 3 9 5H3l9-5Z" />
+                        </svg>
+                      </div>
+                    </template>
+
+                    <v-list-item-title class="!text-xs !font-semibold !text-slate-800">
+                      {{ item.raw.bankname }}
+                    </v-list-item-title>
+
+                    <v-list-item-subtitle
+                      v-if="item.raw.code"
+                      class="!mt-0.5 !text-[10px] !text-slate-400"
+                    >
+                      Bank code {{ item.raw.code }}
+                    </v-list-item-subtitle>
+                  </v-list-item>
+                </template>
+
+                <template #selection="{ item }">
+                  <div class="flex min-w-0 items-center gap-2">
+                    <div
+                      class="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-[#5f9918]/10"
+                    >
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        class="text-[#5f9918]"
+                      >
+                        <path d="M3 10h18" />
+                        <path d="M5 10v8" />
+                        <path d="M9 10v8" />
+                        <path d="M15 10v8" />
+                        <path d="M19 10v8" />
+                        <path d="M3 18h18" />
+                        <path d="m12 3 9 5H3l9-5Z" />
+                      </svg>
+                    </div>
+
+                    <span class="truncate text-xs font-medium text-slate-800">
+                      {{ item.raw.bankname }}
+                    </span>
+                  </div>
+                </template>
+              </v-autocomplete>
+            </div>
+
+            <!-- Account Number -->
+            <div>
+              <label
+                for="edit-account-number"
+                class="mb-1.5 block text-sm font-medium text-slate-700"
+              >
+                Bank Account Number
+              </label>
+
+              <input
+                id="edit-account-number"
+                v-model="editForm.accountNumber"
+                type="text"
+                inputmode="numeric"
+                autocomplete="off"
+                placeholder="Enter account number"
+                :disabled="savingEdit"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-[#5f9918] focus:ring-2 focus:ring-[#5f9918]/20 disabled:bg-slate-50"
+              />
+            </div>
+
+            <!-- Existing account information -->
+            <div class="rounded-xl border border-slate-100 bg-slate-50 px-4 py-3">
+              <p class="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
+                Current bank details
+              </p>
+
+              <div class="mt-2 grid grid-cols-2 gap-3">
+                <div>
+                  <p class="text-[10px] text-slate-400">Bank</p>
+
+                  <p class="mt-0.5 truncate text-xs font-medium text-slate-700">
+                    {{ selectedAccount.activeBank?.bankname || '—' }}
+                  </p>
+                </div>
+
+                <div>
+                  <p class="text-[10px] text-slate-400">Account</p>
+
+                  <p class="mt-0.5 text-xs font-medium text-slate-700">
+                    {{ selectedAccount.activeBank?.bankaccountno || '—' }}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="flex gap-2 border-t border-slate-100 bg-slate-50 px-4 py-3">
+          <!-- Footer -->
+          <div
+            class="flex items-center justify-end gap-3 rounded-b-2xl border-t border-slate-100 bg-slate-50 px-6 py-4"
+          >
             <button
               type="button"
-              class="flex-1 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100"
+              class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="savingEdit"
               @click="closeEditModal"
             >
               Cancel
             </button>
+
             <button
               type="button"
-              class="flex-1 rounded-lg bg-[#5f9918] px-3 py-2 text-sm font-semibold text-white transition hover:bg-[#4d7c13]"
+              class="rounded-xl bg-[#5f9918] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4d7c13] disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="savingEdit || !editForm.bank || !editForm.accountNumber"
               @click="saveAccountChanges"
             >
-              Save
+              {{ savingEdit ? 'Saving...' : 'Save Changes' }}
             </button>
           </div>
         </div>
       </div>
     </Teleport>
-
     <!-- DELETE SUB-ACCOUNT MODAL -->
     <Teleport to="body">
       <div

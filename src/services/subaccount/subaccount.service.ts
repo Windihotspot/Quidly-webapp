@@ -135,6 +135,23 @@ export interface UpdateSubaccountStatusPayload {
   p_status: number // 1 = active, 0 = inactive
 }
 
+// delete subaccount
+// --------------------------------------------------
+// Update subaccount status
+//
+// 1  = Active
+// 0  = Inactive
+// 99 = Deleted
+// --------------------------------------------------
+
+export interface UpdateSubaccountStatusPayload {
+  p_accountid: string
+  p_merchantid: string
+  p_subaccountid: string
+  p_quidlyuserid: string
+  p_status: number
+}
+
 export interface UpdateSubaccountStatusResponse {
   status: number
   error?: string
@@ -165,47 +182,9 @@ export async function updateSubaccountStatus(
     throw error
   }
 }
-
-// delete subaccount
-export interface DeleteSubaccountPayload {
-  p_accountid: string
-  p_merchantid: string
-  p_subaccountid: string
-  p_quidlyuserid: string
-}
-
-export interface DeleteSubaccountResponse {
-  status: number
-  error?: string
-}
-
-export async function deleteSubaccount(
-  payload: DeleteSubaccountPayload
-): Promise<DeleteSubaccountResponse> {
-  try {
-    const response = await post<DeleteSubaccountResponse>('/delete_subaccount', payload)
-
-    console.log('🗑 DELETE SUBACCOUNT RESPONSE:', response.data)
-
-    if (response.data?.error) {
-      throw new Error(response.data.error)
-    }
-
-    if (response.data?.status !== 1) {
-      throw new Error(response.data?.error || 'Failed to delete subaccount')
-    }
-
-    return response.data
-  } catch (error) {
-    console.error('❌ Failed to delete subaccount:', error)
-    throw error
-  }
-}
-
 export default {
   getSubaccounts,
   addSubaccount,
   updateSubaccount,
-  updateSubaccountStatus,
-  deleteSubaccount
+  updateSubaccountStatus
 }

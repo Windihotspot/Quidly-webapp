@@ -26,11 +26,15 @@ export const useSubaccountStore = defineStore('subaccount', () => {
         account.merchantid,
         account.activeBank?.bankaccountno,
         account.activeBank?.bankid
-      ].some((value) => value?.toLowerCase().includes(query))
+      ].some((value) => value?.toString().toLowerCase().includes(query))
     )
   })
 
   const totalSubaccounts = computed(() => subaccounts.value.length)
+
+  // --------------------------------------------------
+  // Fetch
+  // --------------------------------------------------
 
   async function fetchSubaccounts() {
     loading.value = true
@@ -49,11 +53,16 @@ export const useSubaccountStore = defineStore('subaccount', () => {
       subaccounts.value = data
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to fetch subaccounts'
+
       subaccounts.value = []
     } finally {
       loading.value = false
     }
   }
+
+  // --------------------------------------------------
+  // Add
+  // --------------------------------------------------
 
   async function addSubaccount(subaccountname: string, bankid: string, bankaccountno: number) {
     loading.value = true
@@ -77,17 +86,21 @@ export const useSubaccountStore = defineStore('subaccount', () => {
         p_bankaccountno: bankaccountno
       })
 
-      // Refresh list so the new item appears in the card
       await fetchSubaccounts()
 
       return response
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to add subaccount'
+
       throw err
     } finally {
       loading.value = false
     }
   }
+
+  // --------------------------------------------------
+  // Edit bank details
+  // --------------------------------------------------
 
   async function updateSubaccount(
     subaccountid: string,
@@ -122,23 +135,34 @@ export const useSubaccountStore = defineStore('subaccount', () => {
       })
 
       await fetchSubaccounts()
+
       return response
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update subaccount'
+
       throw err
     } finally {
       loading.value = false
     }
   }
 
+  // --------------------------------------------------
+  // Status
+  //
+  // 1  = Active
+  // 0  = Inactive
+  // 99 = Deleted
+  // --------------------------------------------------
+
   async function updateSubaccountStatus(subaccountid: string, status: number) {
     loading.value = true
     error.value = null
 
-    // Optimistic UI update
-    const index = subaccounts.value.findIndex((a) => a.subaccountid === subaccountid)
+    const index = subaccounts.value.findIndex((account) => account.subaccountid === subaccountid)
+
     const previousStatus = index !== -1 ? subaccounts.value[index].status : null
 
+    // Optimistic update
     if (index !== -1) {
       subaccounts.value[index] = {
         ...subaccounts.value[index],
@@ -163,8 +187,13 @@ export const useSubaccountStore = defineStore('subaccount', () => {
         p_status: status
       })
 
-      // Optional: re-sync from server
-      // await fetchSubaccounts()
+      // Status 99 means deleted.
+      // Remove it from the visible list after backend success.
+      if (status === 99) {
+        subaccounts.value = subaccounts.value.filter(
+          (account) => account.subaccountid !== subaccountid
+        )
+      }
 
       return response
     } catch (err) {
@@ -177,41 +206,7 @@ export const useSubaccountStore = defineStore('subaccount', () => {
       }
 
       error.value = err instanceof Error ? err.message : 'Failed to update subaccount status'
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
 
-  async function deleteSubaccount(subaccountid: string) {
-    loading.value = true
-    error.value = null
-
-    try {
-      const accountId = authStore.accountId
-      const merchantId = authStore.activeMerchantId
-      const quidlyUserId = authStore.quidlyUserId
-
-      if (!accountId || !merchantId || !quidlyUserId) {
-        throw new Error('Account ID, Merchant ID or Quidly User ID is not available')
-      }
-
-      const response = await SubaccountService.deleteSubaccount({
-        p_accountid: accountId,
-        p_merchantid: merchantId,
-        p_subaccountid: subaccountid,
-        p_quidlyuserid: quidlyUserId
-      })
-
-      // Remove from local list immediately
-      subaccounts.value = subaccounts.value.filter((a) => a.subaccountid !== subaccountid)
-
-      // Optional hard refresh
-      // await fetchSubaccounts()
-
-      return response
-    } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Failed to delete subaccount'
       throw err
     } finally {
       loading.value = false
@@ -225,10 +220,10 @@ export const useSubaccountStore = defineStore('subaccount', () => {
     searchQuery,
     filteredSubaccounts,
     totalSubaccounts,
+
     fetchSubaccounts,
     addSubaccount,
     updateSubaccount,
-    updateSubaccountStatus,
-    deleteSubaccount
+    updateSubaccountStatus
   }
 })

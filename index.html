@@ -2,16 +2,215 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-     <link
+
+    <link
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Inter:wght@100..800&display=swap"
     />
+
     <link rel="icon" href="/src/assets/images/quidly-logo.png" />
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
     <title>Quidly</title>
+
+    <style>
+      #initial-loader {
+        min-height: 100vh;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        font-family:
+          Inter,
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          sans-serif;
+      }
+
+      .initial-loader-content {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* =========================================
+     QUIDLY LOADER
+  ========================================= */
+
+      .quidly-loader {
+        position: relative;
+        width: 220px;
+        height: 220px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Actual Quidly logo */
+      .quidly-loader-logo {
+        position: absolute;
+        z-index: 10;
+
+        width: 108px;
+        height: auto;
+
+        object-fit: contain;
+      }
+
+      /*
+    The orbit is larger than the logo.
+    It contains the four colored arcs.
+  */
+      .quidly-orbit {
+        position: absolute;
+        inset: 0;
+
+        width: 100%;
+        height: 100%;
+
+        border-radius: 50%;
+
+        /*
+      Four separated arcs:
+
+      GREEN       = top
+      LIGHT GREEN = left
+      LIGHT BLUE  = right
+      BLUE        = bottom
+
+      The transparent sections create
+      the large gaps seen in your reference.
+    */
+        background: conic-gradient(
+          from -45deg,
+
+          /* green top */ #67ad0b 0deg,
+          #67ad0b 58deg,
+
+          transparent 58deg,
+          transparent 92deg,
+
+          /* light blue right */ #dcecfb 92deg,
+          #dcecfb 145deg,
+
+          transparent 145deg,
+          transparent 180deg,
+
+          /* blue bottom */ #287bdc 180deg,
+          #287bdc 238deg,
+
+          transparent 238deg,
+          transparent 272deg,
+
+          /* light green left */ #e2f1d1 272deg,
+          #e2f1d1 325deg,
+
+          transparent 325deg,
+          transparent 360deg
+        );
+
+        /*
+      Turns the gradient into a thick circular ring.
+    */
+        -webkit-mask: radial-gradient(
+          farthest-side,
+          transparent calc(100% - 9px),
+          #000 calc(100% - 8px)
+        );
+
+        mask: radial-gradient(farthest-side, transparent calc(100% - 9px), #000 calc(100% - 8px));
+
+        animation: quidly-orbit-spin 2s linear infinite;
+      }
+
+      /* Tiny soft glow on the active colors */
+      .quidly-orbit::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+
+        border-radius: 50%;
+
+        background: transparent;
+
+        pointer-events: none;
+      }
+
+      /*
+    Animation:
+    The logo stays still.
+    ONLY the orbit rotates.
+  */
+      @keyframes quidly-orbit-spin {
+        from {
+          transform: rotate(0deg);
+        }
+
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      /* Loading text */
+      .initial-loader-text {
+        margin-top: 2px;
+
+        font-size: 14px;
+        font-weight: 400;
+
+        letter-spacing: 0.1px;
+
+        color: #6b7280;
+      }
+
+      /* Mobile */
+      @media (max-width: 480px) {
+        .quidly-loader {
+          width: 190px;
+          height: 190px;
+        }
+
+        .quidly-loader-logo {
+          width: 96px;
+        }
+
+        .initial-loader-text {
+          font-size: 13px;
+        }
+      }
+
+      /* Accessibility */
+      @media (prefers-reduced-motion: reduce) {
+        .quidly-orbit {
+          animation: none;
+        }
+      }
+    </style>
   </head>
+
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <div id="initial-loader">
+        <div class="initial-loader-content">
+          <div class="quidly-loader">
+            <!-- Your actual Quidly logo -->
+            <img src="/src/assets/images/quidly-logo.png" alt="Quidly" class="quidly-loader-logo" />
+
+            <!-- Four rotating arcs -->
+            <div class="quidly-orbit"></div>
+          </div>
+
+          <div class="initial-loader-text">Initializing secure session...</div>
+        </div>
+      </div>
+    </div>
+
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

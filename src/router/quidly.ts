@@ -33,6 +33,14 @@ const quidlyRoutes: RouteRecordRaw[] = [
       requiresAuth: true,
     },
   },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('@/views/accounts/AddMerchant.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+  },
 
 ]
 

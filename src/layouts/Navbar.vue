@@ -147,11 +147,7 @@ const markAllRead = () => {
 
     <!-- Right: Controls -->
     <div class="header-controls m-2">
-      <!-- Live indicator -->
-      <div class="live-badge">
-        <span class="live-dot"></span>
-        <span class="live-text">LIVE</span>
-      </div>
+      
 
       <!-- Date -->
       <div class="date-chip">

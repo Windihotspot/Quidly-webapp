@@ -57,6 +57,15 @@ const routes: RouteRecordRaw[] = [
     },
     
   },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('@/views/profile/AddMerchant.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+    
+  },
 
   // --------------------------------------------------
   // Catch All

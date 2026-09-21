@@ -1,6 +1,6 @@
 <template>
   <div class="dash-sidebar">
-     <div class="sidebar-logo">
+    <div class="sidebar-logo">
       <!-- Your logo image or text here -->
       <img src="@/assets/images/quidly-logo.png" alt="Logo" class="logo-image" />
       <!-- or use text: -->
@@ -32,10 +32,7 @@
 
         <!-- Dropdown Submenu -->
         <transition name="submenu">
-          <div
-            v-if="item.children?.length && openMenus[item.nav]"
-            class="submenu-wrapper"
-          >
+          <div v-if="item.children?.length && openMenus[item.nav]" class="submenu-wrapper">
             <div class="submenu">
               <router-link
                 v-for="child in item.children"
@@ -50,15 +47,9 @@
           </div>
         </transition>
       </template>
-
-      
-
-      
-
-     
     </ul>
 
-      <div class="sidebar-user-section">
+    <div class="sidebar-user-section">
       <UserMenu variant="sidebar" />
     </div>
   </div>
@@ -82,7 +73,7 @@ const openMenus = reactive<Record<string, boolean>>({
   payments: false,
   transactions: false,
   accounts: false,
-  settings: false,
+  settings: false
 })
 
 /*
@@ -95,7 +86,7 @@ const menuItems = [
     nav: 'overview',
     label: 'Dashboard',
     icon: 'mdi mdi-view-dashboard-outline',
-    to: '/dashboard',
+    to: '/dashboard'
   },
 
   {
@@ -106,13 +97,13 @@ const menuItems = [
     children: [
       {
         label: 'Invoices',
-        to: '/payments/invoices',
+        to: '/payments/invoices'
       },
       {
         label: 'Creditlist',
-        to: '/payments/creditlist',
-      },
-    ],
+        to: '/payments/creditlist'
+      }
+    ]
   },
 
   {
@@ -123,13 +114,13 @@ const menuItems = [
     children: [
       {
         label: 'Transactions',
-        to: '/transactions',
+        to: '/transactions'
       },
       {
         label: 'Refunds',
-        to: '/transactions/refunds',
-      },
-    ],
+        to: '/transactions/refunds'
+      }
+    ]
   },
 
   {
@@ -140,17 +131,17 @@ const menuItems = [
     children: [
       {
         label: 'subaccounts',
-        to: '/subaccounts',
+        to: '/subaccounts'
       },
       {
         label: 'Banks',
-        to: '/banks',
+        to: '/banks'
       },
       {
         label: 'Settlement',
-        to: '/accounts/settlement',
-      },
-    ],
+        to: '/accounts/settlement'
+      }
+    ]
   },
 
   {
@@ -161,29 +152,29 @@ const menuItems = [
     children: [
       {
         label: 'Compliance',
-        to: '/settings/compliance',
+        to: '/settings/compliance'
       },
       {
         label: 'API-keys',
-        to: '/settings/api-keys',
+        to: '/settings/api-keys'
       },
       {
         label: 'Profile',
-        to: '/settings/profile',
+        to: '/profile'
       },
       {
         label: 'Webhook',
-        to: '/settings/webhook',
-      },
-    ],
+        to: '/settings/webhook'
+      }
+    ]
   },
 
   {
     nav: 'docs',
     label: 'Documentation',
     icon: 'mdi mdi-book-open-page-variant-outline',
-    to: '/docs',
-  },
+    to: '/docs'
+  }
 ]
 
 /*
@@ -194,10 +185,7 @@ const menuItems = [
 const isActive = (item: any) => {
   if (!item.to) return false
 
-  return (
-    route.path === item.to ||
-    route.path.startsWith(item.to + '/')
-  )
+  return route.path === item.to || route.path.startsWith(item.to + '/')
 }
 
 /*
@@ -299,7 +287,7 @@ const signOut = async () => {
   align-items: center;
   gap: 12px;
   padding: 12px 12px;
-  padding-left: 14px;   /* space for left vertical bar */
+  padding-left: 14px; /* space for left vertical bar */
   margin-bottom: 10px;
   border-radius: 8px;
   border-left: 3px solid transparent;

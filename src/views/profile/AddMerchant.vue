@@ -1,4 +1,5 @@
 <script setup>
+import MainLayout from '@/layouts/MainLayout.vue'
 import { ref, reactive, computed, watch } from 'vue'
 
 /**
@@ -9,7 +10,7 @@ import { ref, reactive, computed, watch } from 'vue'
 const props = defineProps({
   modelValue: {
     type: Boolean,
-    default: false
+    default: true
   }
 })
 
@@ -207,7 +208,8 @@ function closeDialog() {
 </script>
 
 <template>
-  <v-dialog
+  <main-layout>
+      <v-dialog
     v-model="dialogOpen"
     max-width="640"
     persistent
@@ -555,6 +557,8 @@ function closeDialog() {
       </v-card-text>
     </v-card>
   </v-dialog>
+  </main-layout>
+
 </template>
 
 <style scoped>

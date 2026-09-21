@@ -4,40 +4,59 @@ type KeycloakClient = InstanceType<typeof Keycloak>
 
 let keycloakInstance: KeycloakClient | null = null
 
+let keycloakInitPromise: Promise<KeycloakClient> | null = null
+
 export async function initializeKeycloak(): Promise<KeycloakClient> {
-  if (keycloakInstance) {
+  // Already completely initialized
+  if (keycloakInstance?.authenticated !== undefined) {
     return keycloakInstance
   }
 
-  keycloakInstance = new Keycloak({
-    url: import.meta.env.VITE_KEYCLOAK_URL,
-    realm: import.meta.env.VITE_KEYCLOAK_REALM,
-    clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID
-  })
+  // Initialization already running
+  if (keycloakInitPromise) {
+    return keycloakInitPromise
+  }
 
-  try {
-    const authenticated = await keycloakInstance.init({
-      onLoad: 'check-sso',
-      checkLoginIframe: false,
-      enableLogging: import.meta.env.DEV,
-      useNonce: false,
-      responseMode: 'query',
-      pkceMethod: 'S256'
+  keycloakInitPromise = (async () => {
+    const kc = new Keycloak({
+      url: import.meta.env.VITE_KEYCLOAK_URL,
+      realm: import.meta.env.VITE_KEYCLOAK_REALM,
+      clientId: import.meta.env.VITE_KEYCLOAK_CLIENT_ID,
     })
 
-    if (authenticated) {
-      console.log('✅ Keycloak authenticated successfully')
-      cleanupCallbackUrl()
-      setupTokenRefresh(keycloakInstance)
-    } else {
-      console.log('ℹ️ No existing Keycloak session')
-    }
+    try {
+      const authenticated = await kc.init({
+        onLoad: 'check-sso',
+        checkLoginIframe: false,
+        enableLogging: import.meta.env.DEV,
+        useNonce: false,
+        responseMode: 'query',
+        pkceMethod: 'S256',
+      })
 
-    return keycloakInstance
-  } catch (error) {
-    console.error('❌ Keycloak initialization failed:', error)
-    throw error
-  }
+      keycloakInstance = kc
+
+      if (authenticated) {
+        console.log('✅ Keycloak authenticated successfully')
+
+        cleanupCallbackUrl()
+        setupTokenRefresh(kc)
+      } else {
+        console.log('ℹ️ No existing Keycloak session')
+      }
+
+      return kc
+    } catch (error) {
+      console.error('❌ Keycloak initialization failed:', error)
+
+      keycloakInitPromise = null
+      keycloakInstance = null
+
+      throw error
+    }
+  })()
+
+  return keycloakInitPromise
 }
 export function getKeycloakInstance(): KeycloakClient {
   if (!keycloakInstance) {

@@ -110,7 +110,7 @@
                 />
               </div>
 
-              <div class="quarter-stats">
+               <div class="quarter-stats">
                 <div class="quarter-stat">
                   <span class="qs-label">Value</span>
                   <span class="qs-value">{{
@@ -190,6 +190,9 @@ import VueApexCharts from 'vue3-apexcharts'
 import { useAuthStore } from '@/stores/auth'
 import { storeToRefs } from 'pinia'
 
+
+import ApiService from '@/services/api/api.service'
+
 import {
   dashboardMetrics,
   chartData as initialChartData,
@@ -212,7 +215,7 @@ defineComponent({
 -------------------------------------------------------------------------- */
 
 const authStore = useAuthStore()
-
+  
 const {user} = storeToRefs(authStore)
 
 const metrics = ref<DashboardMetrics>(dashboardMetrics)
@@ -441,7 +444,272 @@ onMounted(() => {
     donutChartReady.value = true
   }, 100)
 })
+
+
+
+/* --------------------------------------------------------------------------
+| API
+-------------------------------------------------------------------------- */
+
+const merchantId = 'quidlydemo01'
+
+const fetchWeeklyTransactions = async () => {
+  try {
+    const { data } = await ApiService.post(
+      '/txdb/procedure/dashboard_weeklytxSummaryExtended_v2',
+      {
+        p_merchantid: merchantId
+      }
+    )
+
+    console.log('Weekly transactions response:', data)
+
+    if (data.status !== 1 || !Array.isArray(data.jsresult)) {
+      return
+    }
+
+    const weekly = data.jsresult[0]
+
+    metrics.value.weekly = {
+      transactions: Number(weekly?.this_week_transactions ?? 0),
+
+      amount:
+        Number(weekly?.this_week_total_amount ?? 0) / 100,
+
+      change:
+        Number(weekly?.pct_change_amount ?? 0)
+    }
+
+    // Update the main transaction card as well
+    metrics.value.transactionValue = {
+      amount:
+        Number(weekly?.this_week_total_amount ?? 0) / 100,
+
+      change:
+        Number(weekly?.pct_change_amount ?? 0),
+
+      period: 'This week'
+    }
+
+  } catch (error) {
+    console.error('Failed to fetch weekly transactions:', error)
+  }
+}
+
+
+const fetchMonthlyTransactions = async () => {
+  try {
+    const { data } = await ApiService.post(
+      '/mdb/procedure/stats_AggregateLastXMonthsTxByMerchant_v2',
+      {
+        p_merchantid: merchantId,
+        p_lookback_month: 5
+      }
+    )
+
+    console.log('Monthly transactions response:', data)
+
+    if (data.status !== 1 || !Array.isArray(data.jsresult)) {
+      return
+    }
+
+    const monthlyData = data.jsresult
+
+    const dates = monthlyData
+      .map((item: any) => item.month_str)
+      .reverse()
+
+    const values = monthlyData
+      .map(
+        (item: any) =>
+          Number(item.transaction_value ?? 0) / 100
+      )
+      .reverse()
+
+    const transactionCounts = monthlyData
+      .map(
+        (item: any) =>
+          Number(item.transaction_count ?? 0)
+      )
+      .reverse()
+
+    // Line chart
+    charts.value.transactionActivityData = {
+      dates,
+      values
+    }
+
+    // Calculate monthly totals
+    const totalTransactions = transactionCounts.reduce(
+      (total, count) => total + count,
+      0
+    )
+
+    const totalValue = values.reduce(
+      (total, value) => total + value,
+      0
+    )
+
+    metrics.value.monthly = {
+      transactions: totalTransactions,
+      amount: totalValue,
+      change: 0
+    }
+
+  } catch (error) {
+    console.error('Failed to fetch monthly transactions:', error)
+  }
+}
+
+
+const fetchQuarterlyTransactions = async () => {
+  try {
+    const { data } = await ApiService.post(
+      '/txdb/procedure/dashboard_quarterlytxSummaryExtended_v2',
+      {
+        p_merchantid: merchantId
+      }
+    )
+
+    console.log('Quarterly transactions response:', data)
+
+    if (data.status !== 1 || !Array.isArray(data.jsresult)) {
+      return
+    }
+
+    const quarterly = data.jsresult[0]
+
+    const transactionValue =
+      Number(
+        quarterly?.this_quarter_total_amount ?? 0
+      ) / 100
+
+    const transactionCount =
+      Number(
+        quarterly?.this_quarter_transactions ?? 0
+      )
+
+    const change =
+      Number(
+        quarterly?.pct_change_amount ?? 0
+      )
+
+    // Update donut chart
+    charts.value.quarterSummaryData = {
+      transactionValue,
+      transactionCount,
+      change
+    }
+
+    // Update dashboard metrics
+    metrics.value.quarterly = {
+      transactions: transactionCount,
+      amount: transactionValue,
+      change
+    }
+
+  } catch (error) {
+    console.error('Failed to fetch quarterly transactions:', error)
+  }
+}
+
+
+const fetchLatestTransactions = async () => {
+  try {
+    const { data } = await ApiService.post(
+      '/txdb/procedure/dashboard_getLatestTransactions',
+      {
+        p_merchantid: merchantId
+      }
+    )
+
+    console.log('Latest transactions response:', data)
+
+    if (data.status !== 1 || !Array.isArray(data.jsresult)) {
+      return
+    }
+
+    transactions.value = data.jsresult.map(
+      (item: any): RecentTransaction => ({
+        id: String(
+          item.id ??
+          item.transaction_id ??
+          item.txid ??
+          ''
+        ),
+
+        date:
+          item.date ??
+          item.transaction_date ??
+          item.created_at ??
+          '',
+
+        amount:
+          Number(
+            item.amount ??
+            item.transaction_value ??
+            item.transaction_amount ??
+            0
+          ) / 100,
+
+        status: normalizeTransactionStatus(item.status),
+
+        reference:
+          item.reference ??
+          item.transaction_reference ??
+          item.reference_number ??
+          ''
+      })
+    )
+
+  } catch (error) {
+    console.error('Failed to fetch latest transactions:', error)
+  }
+}
+
+
+const normalizeTransactionStatus = (
+  status: any
+): RecentTransaction['status'] => {
+  const value = String(status ?? '').toLowerCase()
+
+  if (
+    value === 'success' ||
+    value === 'successful' ||
+    value === 'completed' ||
+    value === 'complete'
+  ) {
+    return 'completed'
+  }
+
+  if (
+    value === 'pending' ||
+    value === 'processing'
+  ) {
+    return 'pending'
+  }
+
+  return 'failed'
+}
+
+
+
+onMounted(async () => {
+  await Promise.all([
+    fetchWeeklyTransactions(),
+    fetchMonthlyTransactions(),
+    fetchQuarterlyTransactions(),
+    fetchLatestTransactions()
+  ])
+
+  setTimeout(() => {
+    lineChartReady.value = true
+    donutChartReady.value = true
+  }, 100)
+})
 </script>
+
+
 
 <style scoped>
 /* Layout */

@@ -58,6 +58,16 @@ const routes: RouteRecordRaw[] = [
     
   },
 
+  {
+    path: '/compliance',
+    name: 'Compliance',
+    component: () => import('@/views/compliance/Compliance.vue'),
+    meta: {
+      requiresAuth: true,
+    },
+    
+  },
+
   // --------------------------------------------------
   // Catch All
   // --------------------------------------------------

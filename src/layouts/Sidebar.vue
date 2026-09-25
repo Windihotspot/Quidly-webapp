@@ -161,7 +161,7 @@ const menuItems = [
     children: [
       {
         label: 'Compliance',
-        to: '/settings/compliance',
+        to: '/compliance',
       },
       {
         label: 'API-keys',

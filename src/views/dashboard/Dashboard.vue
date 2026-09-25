@@ -2,84 +2,136 @@
   <main-layout>
     <div class="dashboard">
       <div class="dashboard-container">
-        <!-- Header -->
+        <!-- ================================================================
+        | Header
+        ================================================================= -->
         <div class="dashboard-header">
           <div>
             <h1 class="page-title">Goodday, {{ displayName }}</h1>
-            <p class="page-subtitle">A clear view of your payment activity and merchant performance.</p>
+
+            <p class="page-subtitle">
+              A clear view of your payment activity and merchant performance.
+            </p>
           </div>
         </div>
 
-        <!-- Stats Grid -->
+        <!-- ================================================================
+        | Stats Grid
+        ================================================================= -->
         <div class="stats-grid">
-          <!-- Transaction Value Card -->
+          <!-- Transaction Value -->
           <div class="stat-card stat-card-primary">
             <div class="stat-card-header">
-              <span class="stat-label">TRANSACTIONS VALUE</span>
-              <span class="stat-badge">{{ metrics.transactionValue.period }}</span>
+              <span class="stat-label"> TRANSACTIONS VALUE </span>
+
+              <span class="stat-badge">
+                {{ metrics.transactionValue.period }}
+              </span>
             </div>
-            <div class="stat-amount">{{ formatCurrency(metrics.transactionValue.amount) }}</div>
-            <div class="stat-change" :class="{ positive: metrics.transactionValue.change >= 0 }">
-              {{ metrics.transactionValue.change }}% this month
+
+            <div class="stat-amount">
+              {{ formatCurrency(metrics.transactionValue.amount) }}
             </div>
+
+            <div
+              class="stat-change"
+              :class="{
+                positive: metrics.transactionValue.change >= 0
+              }"
+            >
+              {{ metrics.transactionValue.change >= 0 ? '↑' : '↓' }}
+              {{ Math.abs(metrics.transactionValue.change).toFixed(2) }}% vs previous period
+            </div>
+
             <button class="stat-action">View transactions →</button>
           </div>
 
-          <!-- Total Transactions Card -->
+          <!-- Total Transactions -->
           <div class="stat-card">
-            <span class="stat-label">TOTAL TRANSACTIONS</span>
-            <div class="stat-amount">{{ metrics.totalTransactions }}</div>
-            <p class="stat-subtitle">No transactions yet</p>
+            <span class="stat-label"> TOTAL TRANSACTIONS </span>
+
+            <div class="stat-amount">
+              {{ metrics.totalTransactions }}
+            </div>
+
+            <p class="stat-subtitle">All successful transactions</p>
           </div>
 
-          <!-- Success Rate Card -->
+          <!-- Success Rate -->
           <div class="stat-card">
-            <span class="stat-label">SUCCESS RATE</span>
-            <div class="stat-amount">{{ formatPercent(metrics.successRate) }}</div>
-            <p class="stat-subtitle">Awaiting payment activity</p>
+            <span class="stat-label"> SUCCESS RATE </span>
+
+            <div class="stat-amount">
+              {{ formatPercent(successRate) }}
+            </div>
+
+            <p class="stat-subtitle">Successful payment rate</p>
           </div>
         </div>
 
-        <!-- Charts Grid -->
+        <!-- ================================================================
+        | Period Summary
+        ================================================================= -->
+        
+
+        <!-- ================================================================
+        | Charts Grid
+        ================================================================= -->
         <div class="charts-grid">
-          <!-- Transaction Activity Chart -->
+          <!-- ============================================================
+          | Transaction Activity
+          ============================================================= -->
           <div class="chart-card">
             <div class="chart-header">
               <div>
                 <h2 class="chart-title">Transaction activity</h2>
-                <p class="chart-subtitle">Value processed over the selected period</p>
+
+                <p class="chart-subtitle">Transaction value over the selected period</p>
               </div>
+
               <div class="chart-controls">
-                <select class="period-select" v-model="selectedPeriod">
+                <select v-model="selectedPeriod" class="period-select">
                   <option value="30days">Last 30 days</option>
+
                   <option value="60days">Last 60 days</option>
+
                   <option value="90days">Last 90 days</option>
                 </select>
               </div>
             </div>
 
             <div class="chart-section">
+              <!-- Chart Summary -->
               <div class="value-processed">
                 <div>
                   <p class="vp-label">VALUE PROCESSED</p>
+
                   <p class="vp-amount">
                     {{
                       formatCurrency(
-                        chartData.transactionActivityData.values[
-                          chartData.transactionActivityData.values.length - 1
-                        ]
+                        chartData.transactionActivityData.values.length
+                          ? chartData.transactionActivityData.values[
+                              chartData.transactionActivityData.values.length - 1
+                            ]
+                          : 0
                       )
                     }}
                   </p>
+
                   <p
                     class="vp-change"
-                    :class="{ positive: chartData.quarterSummaryData.change >= 0 }"
+                    :class="{
+                      positive: metrics.monthly.change >= 0
+                    }"
                   >
-                    ↑ {{ chartData.quarterSummaryData.change }}% vs previous period
+                    {{ metrics.monthly.change >= 0 ? '↑' : '↓' }}
+
+                    {{ Math.abs(metrics.monthly.change).toFixed(2) }}% vs previous period
                   </p>
                 </div>
               </div>
 
+              <!-- Line Chart -->
               <div v-if="lineChartReady" class="chart-container">
                 <apexchart
                   type="line"
@@ -91,16 +143,20 @@
             </div>
           </div>
 
-          <!-- Quarter Summary Chart -->
+          <!-- ============================================================
+          | Quarter Summary
+          ============================================================= -->
           <div class="chart-card">
             <div class="chart-header">
               <div>
                 <h2 class="chart-title">Quarter summary</h2>
+
                 <p class="chart-subtitle">Payment performance snapshot</p>
               </div>
             </div>
-<!-- 
+
             <div class="quarter-content">
+              <!-- Donut -->
               <div v-if="donutChartReady" class="donut-container">
                 <apexchart
                   type="donut"
@@ -110,67 +166,105 @@
                 />
               </div>
 
-               <div class="quarter-stats">
+              <!-- Quarter Statistics -->
+              <div class="quarter-stats">
+                <!-- Value -->
                 <div class="quarter-stat">
-                  <span class="qs-label">Value</span>
-                  <span class="qs-value">{{
-                    formatCurrency(chartData.quarterSummaryData.transactionValue)
-                  }}</span>
+                  <span class="qs-label"> Value </span>
+
+                  <span class="qs-value">
+                    {{ formatCurrency(chartData.quarterSummaryData.transactionValue) }}
+                  </span>
                 </div>
+
+                <!-- Count -->
                 <div class="quarter-stat">
-                  <span class="qs-label">Count</span>
-                  <span class="qs-value">{{ chartData.quarterSummaryData.transactionCount }}</span>
+                  <span class="qs-label"> Transactions </span>
+
+                  <span class="qs-value">
+                    {{ chartData.quarterSummaryData.transactionCount }}
+                  </span>
                 </div>
+
+                <!-- Change -->
                 <div class="quarter-stat">
-                  <span class="qs-label">Change</span>
+                  <span class="qs-label"> Change </span>
+
                   <span
                     class="qs-value"
-                    :class="{ positive: chartData.quarterSummaryData.change >= 0 }"
+                    :class="{
+                      positive: chartData.quarterSummaryData.change >= 0
+                    }"
                   >
-                    {{ chartData.quarterSummaryData.change }}%
+                    {{ chartData.quarterSummaryData.change >= 0 ? '↑' : '↓' }}
+
+                    {{ Math.abs(chartData.quarterSummaryData.change).toFixed(2) }}%
                   </span>
                 </div>
               </div>
-            </div> -->
+            </div>
           </div>
         </div>
 
-        <!-- Recent Transactions -->
+        <!-- ================================================================
+        | Recent Transactions
+        ================================================================= -->
         <div class="recent-transactions">
           <div class="rt-header">
             <div>
               <h2 class="rt-title">Recent transactions</h2>
+
               <p class="rt-subtitle">Your latest payment activity</p>
             </div>
-            <router-link to="/transactions" class="view-all-link">View all</router-link>
+
+            <router-link to="/transactions" class="view-all-link"> View all </router-link>
           </div>
 
           <div class="rt-content">
-            <div class="empty-state" v-if="recentTransactions.length === 0">
+            <!-- Empty State -->
+            <div v-if="recentTransactions.length === 0" class="empty-state">
               <div class="empty-icon">
                 <i class="mdi mdi-format-list-bulleted"></i>
               </div>
+
               <h3>No transactions yet</h3>
+
               <p>Your recent payments will appear here once customers start paying.</p>
             </div>
 
-            <div class="transactions-table" v-else>
+            <!-- Transactions Table -->
+            <div v-else class="transactions-table">
               <table>
                 <thead>
                   <tr>
                     <th>Date</th>
+
                     <th>Reference</th>
+
                     <th>Amount</th>
+
                     <th>Status</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   <tr v-for="tx in recentTransactions" :key="tx.id">
-                    <td>{{ formatDate(tx.date) }}</td>
-                    <td>{{ tx.reference }}</td>
-                    <td>{{ formatCurrency(tx.amount) }}</td>
                     <td>
-                      <span class="status-badge" :class="tx.status">{{ tx.status }}</span>
+                      {{ formatDate(tx.date) }}
+                    </td>
+
+                    <td>
+                      {{ tx.reference }}
+                    </td>
+
+                    <td>
+                      {{ formatCurrency(tx.amount) }}
+                    </td>
+
+                    <td>
+                      <span class="status-badge" :class="tx.status">
+                        {{ tx.status }}
+                      </span>
                     </td>
                   </tr>
                 </tbody>
@@ -189,7 +283,6 @@ import VueApexCharts from 'vue3-apexcharts'
 
 import { useAuthStore } from '@/stores/auth'
 import { storeToRefs } from 'pinia'
-
 
 import ApiService from '@/services/api/api.service'
 
@@ -215,8 +308,8 @@ defineComponent({
 -------------------------------------------------------------------------- */
 
 const authStore = useAuthStore()
-  
-const {user} = storeToRefs(authStore)
+
+const { user } = storeToRefs(authStore)
 
 const metrics = ref<DashboardMetrics>(dashboardMetrics)
 
@@ -445,22 +538,17 @@ onMounted(() => {
   }, 100)
 })
 
-
-
 /* --------------------------------------------------------------------------
 | API
 -------------------------------------------------------------------------- */
 
-const merchantId = 'quidlydemo01'
+const merchantId = "Qde9b16d0d8"
 
 const fetchWeeklyTransactions = async () => {
   try {
-    const { data } = await ApiService.post(
-      '/txdb/procedure/dashboard_weeklytxSummaryExtended_v2',
-      {
-        p_merchantid: merchantId
-      }
-    )
+    const { data } = await ApiService.post('/txdb/procedure/dashboard_weeklytxSummaryExtended_v2', {
+      p_merchantid: merchantId
+    })
 
     console.log('Weekly transactions response:', data)
 
@@ -473,29 +561,25 @@ const fetchWeeklyTransactions = async () => {
     metrics.value.weekly = {
       transactions: Number(weekly?.this_week_transactions ?? 0),
 
-      amount:
-        Number(weekly?.this_week_total_amount ?? 0) / 100,
+      amount: Number(weekly?.this_week_total_amount ?? 0) / 100,
 
-      change:
-        Number(weekly?.pct_change_amount ?? 0)
+      change: Number(weekly?.pct_change_amount ?? 0)
     }
 
     // Update the main transaction card as well
     metrics.value.transactionValue = {
-      amount:
-        Number(weekly?.this_week_total_amount ?? 0) / 100,
+      amount: Number(weekly?.this_week_total_amount ?? 0) / 100,
 
-      change:
-        Number(weekly?.pct_change_amount ?? 0),
+      change: Number(weekly?.pct_change_amount ?? 0),
 
       period: 'This week'
     }
 
+    metrics.value.totalTransactions = Number(weekly?.this_week_transactions ?? 0)
   } catch (error) {
     console.error('Failed to fetch weekly transactions:', error)
   }
 }
-
 
 const fetchMonthlyTransactions = async () => {
   try {
@@ -515,22 +599,14 @@ const fetchMonthlyTransactions = async () => {
 
     const monthlyData = data.jsresult
 
-    const dates = monthlyData
-      .map((item: any) => item.month_str)
-      .reverse()
+    const dates = monthlyData.map((item: any) => item.month_str).reverse()
 
     const values = monthlyData
-      .map(
-        (item: any) =>
-          Number(item.transaction_value ?? 0) / 100
-      )
+      .map((item: any) => Number(item.transaction_value ?? 0) / 100)
       .reverse()
 
     const transactionCounts = monthlyData
-      .map(
-        (item: any) =>
-          Number(item.transaction_count ?? 0)
-      )
+      .map((item: any) => Number(item.transaction_count ?? 0))
       .reverse()
 
     // Line chart
@@ -540,27 +616,19 @@ const fetchMonthlyTransactions = async () => {
     }
 
     // Calculate monthly totals
-    const totalTransactions = transactionCounts.reduce(
-      (total, count) => total + count,
-      0
-    )
+    const totalTransactions = transactionCounts.reduce((total, count) => total + count, 0)
 
-    const totalValue = values.reduce(
-      (total, value) => total + value,
-      0
-    )
+    const totalValue = values.reduce((total, value) => total + value, 0)
 
     metrics.value.monthly = {
       transactions: totalTransactions,
       amount: totalValue,
       change: 0
     }
-
   } catch (error) {
     console.error('Failed to fetch monthly transactions:', error)
   }
 }
-
 
 const fetchQuarterlyTransactions = async () => {
   try {
@@ -579,20 +647,11 @@ const fetchQuarterlyTransactions = async () => {
 
     const quarterly = data.jsresult[0]
 
-    const transactionValue =
-      Number(
-        quarterly?.this_quarter_total_amount ?? 0
-      ) / 100
+    const transactionValue = Number(quarterly?.this_quarter_total_amount ?? 0) / 100
 
-    const transactionCount =
-      Number(
-        quarterly?.this_quarter_transactions ?? 0
-      )
+    const transactionCount = Number(quarterly?.this_quarter_transactions ?? 0)
 
-    const change =
-      Number(
-        quarterly?.pct_change_amount ?? 0
-      )
+    const change = Number(quarterly?.pct_change_amount ?? 0)
 
     // Update donut chart
     charts.value.quarterSummaryData = {
@@ -607,21 +666,16 @@ const fetchQuarterlyTransactions = async () => {
       amount: transactionValue,
       change
     }
-
   } catch (error) {
     console.error('Failed to fetch quarterly transactions:', error)
   }
 }
 
-
 const fetchLatestTransactions = async () => {
   try {
-    const { data } = await ApiService.post(
-      '/txdb/procedure/dashboard_getLatestTransactions',
-      {
-        p_merchantid: merchantId
-      }
-    )
+    const { data } = await ApiService.post('/txdb/procedure/dashboard_getLatestTransactions', {
+      p_merchantid: merchantId
+    })
 
     console.log('Latest transactions response:', data)
 
@@ -631,46 +685,35 @@ const fetchLatestTransactions = async () => {
 
     transactions.value = data.jsresult.map(
       (item: any): RecentTransaction => ({
-        id: String(
-          item.id ??
-          item.transaction_id ??
-          item.txid ??
-          ''
-        ),
+        id: String(item.id ?? item.transaction_id ?? item.txid ?? ''),
 
-        date:
-          item.date ??
-          item.transaction_date ??
-          item.created_at ??
-          '',
+        date: item.date ?? item.transaction_date ?? item.created_at ?? '',
 
-        amount:
-          Number(
-            item.amount ??
-            item.transaction_value ??
-            item.transaction_amount ??
-            0
-          ) / 100,
+        amount: Number(item.amount ?? item.transaction_value ?? item.transaction_amount ?? 0) / 100,
 
         status: normalizeTransactionStatus(item.status),
 
-        reference:
-          item.reference ??
-          item.transaction_reference ??
-          item.reference_number ??
-          ''
+        reference: item.reference ?? item.transaction_reference ?? item.reference_number ?? ''
       })
     )
-
   } catch (error) {
     console.error('Failed to fetch latest transactions:', error)
   }
 }
 
+const successRate = computed(() => {
+  if (transactions.value.length === 0) {
+    return 0
+  }
 
-const normalizeTransactionStatus = (
-  status: any
-): RecentTransaction['status'] => {
+  const successfulTransactions = transactions.value.filter(
+    tx => tx.status === 'completed'
+  ).length
+
+  return (successfulTransactions / transactions.value.length) * 100
+})
+
+const normalizeTransactionStatus = (status: any): RecentTransaction['status'] => {
   const value = String(status ?? '').toLowerCase()
 
   if (
@@ -682,17 +725,12 @@ const normalizeTransactionStatus = (
     return 'completed'
   }
 
-  if (
-    value === 'pending' ||
-    value === 'processing'
-  ) {
+  if (value === 'pending' || value === 'processing') {
     return 'pending'
   }
 
   return 'failed'
 }
-
-
 
 onMounted(async () => {
   await Promise.all([
@@ -708,8 +746,6 @@ onMounted(async () => {
   }, 100)
 })
 </script>
-
-
 
 <style scoped>
 /* Layout */

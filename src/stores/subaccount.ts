@@ -214,9 +214,13 @@ export const useSubaccountStore = defineStore('subaccount', () => {
   // 99 = Deleted
   // --------------------------------------------------
 
-  async function updateSubaccountStatus(
+  async function updateSubaccount(
     subaccountid: string,
-    status: number
+    bankid: string,
+    bankaccountno: string,
+    bankidOld: string,
+    bankaccountnoOld: string,
+    banksortcode: string
   ) {
     loading.value = true
     error.value = null
@@ -232,46 +236,32 @@ export const useSubaccountStore = defineStore('subaccount', () => {
         )
       }
 
-      const response = await SubaccountService.updateSubaccountStatus({
+      console.log('✏️ STORE UPDATE:', {
+        subaccountid,
+        bankid,
+        bankaccountno,
+        bankidOld,
+        bankaccountnoOld,
+        banksortcode
+      })
+
+      const response = await SubaccountService.updateSubaccount({
         p_accountid: accountId,
         p_merchantid: merchantId,
         p_subaccountid: subaccountid,
         p_quidlyuserid: quidlyUserId,
-        p_status: status
+        p_bankid: bankid,
+        p_bankaccountno: String(bankaccountno).trim(),
+        p_bankid_old: bankidOld,
+        p_bankaccountno_old: String(bankaccountnoOld).trim(),
+        p_banksortcode: String(banksortcode).trim()
       })
 
-      // --------------------------------------------------
-      // Delete
-      // --------------------------------------------------
-
-      if (status === 99) {
-        subaccounts.value = subaccounts.value.filter(
-          (account) => account.subaccountid !== subaccountid
-        )
-
-        return response
-      }
-
-      // --------------------------------------------------
-      // Active / Inactive
-      // Refresh from backend
-      // --------------------------------------------------
-
-      try {
-        await fetchSubaccounts()
-      } catch (refreshError) {
-        console.error(
-          'Status updated successfully, but failed to refresh subaccounts:',
-          refreshError
-        )
-      }
+      await fetchSubaccounts()
 
       return response
     } catch (err) {
-      error.value =
-        err instanceof Error
-          ? err.message
-          : 'Failed to update subaccount status'
+      error.value = err instanceof Error ? err.message : 'Failed to update subaccount'
 
       throw err
     } finally {
@@ -291,10 +281,8 @@ export const useSubaccountStore = defineStore('subaccount', () => {
 
     filteredSubaccounts,
     totalSubaccounts,
-
     fetchSubaccounts,
     addSubaccount,
-    updateSubaccount,
-    updateSubaccountStatus
+    updateSubaccount
   }
 })

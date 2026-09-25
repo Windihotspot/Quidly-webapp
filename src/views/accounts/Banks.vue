@@ -1,22 +1,41 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 
 import MainLayout from '@/layouts/MainLayout.vue'
-import { useBankStore, type Bank, type MerchantBankAccount } from '@/stores/bank'
+import {
+  useBankStore,
+  type Bank,
+  type MerchantBankAccount
+} from '@/stores/bank'
 import { useAuthStore } from '@/stores/auth'
 
 const bankStore = useBankStore()
 const authStore = useAuthStore()
 
-const { banks, loading, error, merchantAccounts, accountsLoading, accountsError } =
-  storeToRefs(bankStore)
+/* -------------------------------------------------------------------------- */
+/* STORE                                                                       */
+/* -------------------------------------------------------------------------- */
 
-const { fetchBanks, fetchMerchantAccounts, addMerchantAccount } = bankStore
+const {
+  banks,
+  loading,
+  error,
+  merchantAccounts,
+  accountsLoading,
+  accountsError
+} = storeToRefs(bankStore)
 
-// --------------------------------------------------
-// AUTH
-// --------------------------------------------------
+const {
+  fetchBanks,
+  fetchMerchantAccounts,
+  addMerchantAccount
+} = bankStore
+
+/* -------------------------------------------------------------------------- */
+/* AUTH / MERCHANT                                                             */
+/* -------------------------------------------------------------------------- */
+
 const { activeMerchantId, activeMerchant } = storeToRefs(authStore)
 
 const merchantId = computed(() => activeMerchantId.value || '')
@@ -33,10 +52,12 @@ const merchantDisplayName = computed(() => {
   )
 })
 
-// --------------------------------------------------
-// SEARCH / FILTER
-// --------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/* SEARCH / FILTER                                                             */
+/* -------------------------------------------------------------------------- */
+
 const searchQuery = ref('')
+
 const statusFilter = ref<'all' | 'active' | 'inactive'>('all')
 
 const filteredMerchantAccounts = computed(() => {
@@ -61,18 +82,21 @@ const filteredMerchantAccounts = computed(() => {
   })
 })
 
-// --------------------------------------------------
-// EXPANDED ACCOUNT
-// --------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/* ACCOUNT EXPANSION                                                          */
+/* -------------------------------------------------------------------------- */
+
 const expandedAccount = ref<MerchantBankAccount | null>(null)
 
 function toggleAccount(account: MerchantBankAccount) {
-  expandedAccount.value = expandedAccount.value === account ? null : account
+  expandedAccount.value =
+    expandedAccount.value === account ? null : account
 }
 
-// --------------------------------------------------
-// ADD MODAL
-// --------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/* ADD BANK MODAL                                                              */
+/* -------------------------------------------------------------------------- */
+
 const showAddCard = ref(false)
 const isSubmitting = ref(false)
 
@@ -97,11 +121,17 @@ const canSubmit = computed(() => {
   )
 })
 
+/* -------------------------------------------------------------------------- */
+/* BANK SEARCH                                                                 */
+/* -------------------------------------------------------------------------- */
+
 function bankFilter(_value: string, query: string, item: any) {
   const bank = item?.raw as Bank | undefined
+
   if (!bank) return false
 
   const search = query.trim().toLowerCase()
+
   if (!search) return true
 
   return (
@@ -114,27 +144,47 @@ function bankFilter(_value: string, query: string, item: any) {
 
 function handleBankChange(bank: Bank | null) {
   selectedBank.value = bank
+
   form.value.bankId = bank?.bankid || ''
 }
 
 function openAddCard() {
-  form.value = { bankId: '', accountNo: '', accountName: '' }
+  form.value = {
+    bankId: '',
+    accountNo: '',
+    accountName: ''
+  }
+
   selectedBank.value = null
+
   accountNumberError.value = ''
   accountNameError.value = ''
   saveError.value = ''
+
   showAddCard.value = true
 }
 
 function closeAddCard() {
   if (isSubmitting.value) return
+
   showAddCard.value = false
+
   selectedBank.value = null
-  form.value = { bankId: '', accountNo: '', accountName: '' }
+
+  form.value = {
+    bankId: '',
+    accountNo: '',
+    accountName: ''
+  }
+
   accountNumberError.value = ''
   accountNameError.value = ''
   saveError.value = ''
 }
+
+/* -------------------------------------------------------------------------- */
+/* ADD MERCHANT BANK                                                           */
+/* -------------------------------------------------------------------------- */
 
 async function submitNewBank() {
   accountNumberError.value = ''
@@ -151,12 +201,20 @@ async function submitNewBank() {
     return
   }
 
-  if (!form.value.accountNo.trim()) {
+  const accountNumber = form.value.accountNo.trim()
+  const accountName = form.value.accountName.trim()
+
+  if (!accountNumber) {
     accountNumberError.value = 'Account number is required.'
     return
   }
 
-  if (!form.value.accountName.trim()) {
+  if (accountNumber.length < 8) {
+    accountNumberError.value = 'Please enter a valid account number.'
+    return
+  }
+
+  if (!accountName) {
     accountNameError.value = 'Account name is required.'
     return
   }
@@ -169,36 +227,41 @@ async function submitNewBank() {
       merchantId: merchantId.value,
       subaccountId: '',
       bankId: selectedBank.value.bankid,
-      bankAccountNo: form.value.accountNo.trim(),
-      bankAccountName: form.value.accountName.trim(),
-      bankSortCode: selectedBank.value.code || selectedBank.value.longcode || '',
+      bankAccountNo: accountNumber,
+      bankAccountName: accountName,
+
+      // Uses the bank code returned from registered banks.
+      bankSortCode:
+        selectedBank.value.code ||
+        selectedBank.value.longcode ||
+        '',
+
       quidlyUserId: quidlyUserId.value
     }
 
+    console.log('🏦 ADDING MERCHANT BANK:', payload)
+
     await addMerchantAccount(payload)
+
     closeAddCard()
   } catch (err) {
-    console.error('Failed to add merchant bank account:', err)
-    saveError.value = 'Unable to add bank account. Please try again.'
+    console.error('❌ Failed to add merchant bank:', err)
+
+    saveError.value =
+      'Unable to add bank account. Please try again.'
   } finally {
     isSubmitting.value = false
   }
 }
 
-// --------------------------------------------------
-// TOGGLE STATUS
-// --------------------------------------------------
-async function toggleAccountStatus(account: MerchantBankAccount) {
-  // Placeholder until update-status API is available
-  console.log('Toggle account:', account)
-  console.warn('Account status API has not been provided yet.')
-}
+/* -------------------------------------------------------------------------- */
+/* DELETE                                                                      */
+/* -------------------------------------------------------------------------- */
 
-// --------------------------------------------------
-// DELETE CONFIRMATION
-// --------------------------------------------------
 const showDeleteModal = ref(false)
+
 const accountToDelete = ref<MerchantBankAccount | null>(null)
+
 const isDeleting = ref(false)
 
 function openDeleteModal(account: MerchantBankAccount) {
@@ -208,6 +271,7 @@ function openDeleteModal(account: MerchantBankAccount) {
 
 function closeDeleteModal() {
   if (isDeleting.value) return
+
   showDeleteModal.value = false
   accountToDelete.value = null
 }
@@ -218,36 +282,64 @@ async function confirmDelete() {
   isDeleting.value = true
 
   try {
-    // Placeholder until delete API is available
-    console.log('Delete account:', accountToDelete.value)
-    console.warn('Delete Merchant Settlement Bank API has not been provided yet.')
-
-    // After API is ready:
-    // await deleteMerchantAccount(...)
-    // await fetchMerchantAccounts(...)
+    /*
+     * Delete API has not been supplied yet.
+     *
+     * Do NOT invent an endpoint here.
+     */
+    console.log(
+      '🗑️ Account selected for deletion:',
+      accountToDelete.value
+    )
 
     closeDeleteModal()
   } catch (err) {
-    console.error('Failed to delete account:', err)
+    console.error('❌ Failed to delete merchant bank:', err)
   } finally {
     isDeleting.value = false
   }
 }
 
-// --------------------------------------------------
-// HELPERS
-// --------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/* ACCOUNT STATUS                                                              */
+/* -------------------------------------------------------------------------- */
+
+async function toggleAccountStatus(account: MerchantBankAccount) {
+  console.log('🔄 Toggle merchant bank status:', account)
+
+  /*
+   * Status API has not been supplied yet.
+   *
+   * Leave this here until the Swagger endpoint is confirmed.
+   */
+}
+
+/* -------------------------------------------------------------------------- */
+/* DISPLAY HELPERS                                                             */
+/* -------------------------------------------------------------------------- */
+
 function maskedAccountNumber(accountNo?: string) {
-  if (!accountNo) return 'Account number unavailable'
+  if (!accountNo) {
+    return 'Account number unavailable'
+  }
+
   const value = String(accountNo)
-  if (value.length <= 4) return value
+
+  if (value.length <= 4) {
+    return value
+  }
+
   return `•••• ${value.slice(-4)}`
 }
 
 function formatDate(value?: string) {
   if (!value) return '—'
+
   const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
+
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
 
   return new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
@@ -257,30 +349,94 @@ function formatDate(value?: string) {
 }
 
 function getCreatedDate(account: MerchantBankAccount) {
-  return account.created || account.createddate || account.createdat || ''
+  return (
+    account.created ||
+    account.createddate ||
+    account.createdat ||
+    ''
+  )
 }
 
 function isAccountActive(account: MerchantBankAccount) {
   return Number(account.status) === 1
 }
 
-// --------------------------------------------------
-// LOAD DATA
-// --------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/* PAGE DATA                                                                   */
+/* -------------------------------------------------------------------------- */
+
 async function loadPageData() {
-  await Promise.all([
-    fetchBanks(),
-    merchantId.value && accountId.value
-      ? fetchMerchantAccounts(accountId.value, merchantId.value)
-      : Promise.resolve()
-  ])
+  console.log('🏦 Loading bank management page...')
+
+  console.log('Account ID:', accountId.value)
+  console.log('Merchant ID:', merchantId.value)
+  console.log('Quidly User ID:', quidlyUserId.value)
+
+  /*
+   * Always fetch registered banks.
+   */
+  await fetchBanks()
+
+  /*
+   * Settlement banks require both accountId and merchantId.
+   */
+  if (!accountId.value || !merchantId.value) {
+    console.warn(
+      '⚠️ Cannot fetch merchant settlement banks:',
+      {
+        accountId: accountId.value,
+        merchantId: merchantId.value
+      }
+    )
+
+    return
+  }
+
+  await fetchMerchantAccounts(
+    accountId.value,
+    merchantId.value,
+    ''
+  )
 }
+
+/* -------------------------------------------------------------------------- */
+/* INITIAL LOAD                                                                */
+/* -------------------------------------------------------------------------- */
 
 onMounted(async () => {
   await loadPageData()
 })
-</script>
 
+/* -------------------------------------------------------------------------- */
+/* MERCHANT CHANGE                                                             */
+/* -------------------------------------------------------------------------- */
+
+watch(
+  [accountId, merchantId],
+  async ([newAccountId, newMerchantId], [oldAccountId, oldMerchantId]) => {
+    if (!newAccountId || !newMerchantId) {
+      return
+    }
+
+    if (
+      newAccountId === oldAccountId &&
+      newMerchantId === oldMerchantId
+    ) {
+      return
+    }
+
+    console.log('🔄 Merchant/account changed. Reloading banks...')
+
+    expandedAccount.value = null
+
+    await fetchMerchantAccounts(
+      newAccountId,
+      newMerchantId,
+      ''
+    )
+  }
+)
+</script>
 <template>
   <MainLayout>
     <div class="min-h-screen bg-[#f5faf9] px-4 py-5 sm:px-6 lg:px-8">

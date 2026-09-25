@@ -19,20 +19,34 @@ export async function getRegisteredBanks() {
 /**
  * Get bank accounts already connected to the active merchant.
  */
+/**
+ * Get merchant settlement bank accounts.
+ *
+ * Swagger:
+ * POST /mdb/procedure/get_merchant_settlementbank
+ */
 export async function getMerchantSettlementBanks(params: {
   accountId: string
   merchantId: string
   subaccountId?: string
 }) {
-  const response = await post('/mdb/procedure/get_Merchant_SettlementBanks', {
+  try {
+    const response = await post(
+  '/mdb/procedure/get_Merchant_SettlementBanks',
+  {
     p_accountid: params.accountId,
     p_merchantid: params.merchantId,
     p_subaccountid: params.subaccountId || ''
-  })
+  }
+)
 
-  console.log('🏦 MERCHANT SETTLEMENT BANK RESPONSE:', response?.data)
+    console.log('🏦 MERCHANT SETTLEMENT BANK RESPONSE:', response?.data)
 
-  return response.data
+    return response.data
+  } catch (error) {
+    console.error('❌ Failed to fetch merchant settlement banks:', error)
+    throw error
+  }
 }
 
 /**

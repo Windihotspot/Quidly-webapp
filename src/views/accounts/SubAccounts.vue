@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { storeToRefs } from 'pinia'
+import Swal from 'sweetalert2/dist/sweetalert2.js'
 
 import MainLayout from '@/layouts/MainLayout.vue'
 import { useSubaccountStore } from '@/stores/subaccount'
@@ -18,6 +19,43 @@ const { searchQuery, filteredSubaccounts, totalSubaccounts, loading, error } =
 
 const { fetchSubaccounts, addSubaccount, updateSubaccount, updateSubaccountStatus } =
   subaccountStore
+
+// --------------------------------------------------
+// Shared Swal helpers
+// --------------------------------------------------
+
+function notifySuccess(text: string) {
+  Swal.fire({
+    text,
+    icon: 'success',
+    buttonsStyling: false,
+    confirmButtonText: 'Ok, got it!',
+    heightAuto: false,
+    customClass: { confirmButton: 'btn btn-primary' }
+  })
+}
+
+function notifyError(err: unknown, fallback: string) {
+  Swal.fire({
+    text: err instanceof Error ? err.message : fallback,
+    icon: 'error',
+    buttonsStyling: false,
+    confirmButtonText: 'Ok, got it!',
+    heightAuto: false,
+    customClass: { confirmButton: 'btn btn-primary' }
+  })
+}
+
+function notifyWarning(text: string) {
+  Swal.fire({
+    text,
+    icon: 'warning',
+    buttonsStyling: false,
+    confirmButtonText: 'Ok',
+    heightAuto: false,
+    customClass: { confirmButton: 'btn btn-primary' }
+  })
+}
 
 // --------------------------------------------------
 // Registered banks
@@ -75,6 +113,8 @@ const addForm = ref({
   name: ''
 })
 
+const savingAdd = ref(false)
+
 // --------------------------------------------------
 // Edit subaccount form
 // --------------------------------------------------
@@ -115,6 +155,8 @@ function openEditSubaccount(account: any) {
 }
 
 function closeEditModal() {
+  if (savingEdit.value) return
+
   showEditModal.value = false
   selectedAccount.value = null
   editSelectedBank.value = null
@@ -157,17 +199,17 @@ async function saveAccountChanges() {
   const oldAccountNumber = editForm.value.oldAccountNumber.trim()
 
   if (!bankId || !accountNumber) {
-    console.error('❌ Bank and account number are required')
+    notifyWarning('Bank and account number are required.')
     return
   }
 
   if (!/^\d+$/.test(accountNumber)) {
-    console.error('❌ Bank account number must contain numbers only')
+    notifyWarning('Bank account number must contain numbers only.')
     return
   }
 
   if (!oldBankId || !oldAccountNumber) {
-    console.error('❌ Existing bank details are missing')
+    notifyWarning('Existing bank details are missing for this sub-account.')
     return
   }
 
@@ -177,17 +219,26 @@ async function saveAccountChanges() {
     await updateSubaccount(
       account.subaccountid,
       bankId,
-      Number(accountNumber),
+      accountNumber,
       oldBankId,
-      Number(oldAccountNumber),
+      oldAccountNumber,
       Number(editForm.value.bankSortCode || 0)
     )
+    showEditModal.value = false
+    selectedAccount.value = null
+    editSelectedBank.value = null
+    editForm.value = {
+      bank: '',
+      accountNumber: '',
+      bankSortCode: 0,
+      oldBank: '',
+      oldAccountNumber: ''
+    }
 
-    console.log('✅ Sub-account updated successfully')
-
-    closeEditModal()
+    notifySuccess('Sub-account updated successfully.')
   } catch (err) {
     console.error('❌ Failed to update sub-account:', err)
+    notifyError(err, 'Failed to update sub-account.')
   } finally {
     savingEdit.value = false
   }
@@ -197,10 +248,14 @@ async function saveAccountChanges() {
 // Toggle active / inactive
 // --------------------------------------------------
 
+const togglingAccountId = ref<string | null>(null)
+
 async function toggleAccountStatus(account: any) {
-  if (!account?.subaccountid) return
+  if (!account?.subaccountid || togglingAccountId.value) return
 
   const nextStatus = account.status === 1 ? 0 : 1
+
+  togglingAccountId.value = account.subaccountid
 
   try {
     await updateSubaccountStatus(account.subaccountid, nextStatus)
@@ -210,16 +265,19 @@ async function toggleAccountStatus(account: any) {
      * This keeps the UI consistent with the database.
      */
     await fetchSubaccounts()
-
-    console.log(`✅ Sub-account ${nextStatus === 1 ? 'activated' : 'deactivated'}`)
   } catch (err) {
     console.error('❌ Failed to toggle sub-account status:', err)
+    notifyError(err, 'Failed to update sub-account status.')
+  } finally {
+    togglingAccountId.value = null
   }
 }
 
 // --------------------------------------------------
 // Delete = OLD STATUS 99 BEHAVIOR
 // --------------------------------------------------
+
+const deletingAccount = ref(false)
 
 function openDeleteAccountModal(account: any) {
   if (!account?.subaccountid) return
@@ -229,8 +287,42 @@ function openDeleteAccountModal(account: any) {
 }
 
 function closeDeleteModal() {
+  if (deletingAccount.value) return
+
   showDeleteModal.value = false
   selectedAccount.value = null
+}
+
+async function confirmDeleteAccount() {
+  const account = selectedAccount.value
+
+  if (!account?.subaccountid) {
+    console.error('❌ No subaccount selected for delete')
+    return
+  }
+
+  deletingAccount.value = true
+
+  try {
+    // Same as old: status 99
+    await updateSubaccountStatus(account.subaccountid, 99)
+
+    showDeleteModal.value = false
+    selectedAccount.value = null
+
+    // Match old behaviour – always re-sync with backend
+    await fetchSubaccounts()
+
+    notifySuccess('Sub-account deleted successfully.')
+  } catch (err) {
+    console.error('❌ Failed to delete sub-account:', err)
+    notifyError(err, 'Failed to delete sub-account.')
+
+    // Still re-fetch on error (same as old modal)
+    await fetchSubaccounts()
+  } finally {
+    deletingAccount.value = false
+  }
 }
 
 // --------------------------------------------------
@@ -249,6 +341,8 @@ function openAddModal() {
 }
 
 function closeAddModal() {
+  if (savingAdd.value) return
+
   showAddModal.value = false
 
   addForm.value = {
@@ -266,41 +360,30 @@ async function submitAddSubaccount() {
   const name = addForm.value.name.trim()
 
   if (!bankId || !accountNumber || !name) {
+    notifyWarning('Bank, account number and sub-account name are all required.')
     return
   }
 
   if (!/^\d+$/.test(accountNumber)) {
-    console.error('❌ Bank account number must contain numbers only')
+    notifyWarning('Bank account number must contain numbers only.')
     return
   }
+
+  savingAdd.value = true
 
   try {
     await addSubaccount(name, bankId, Number(accountNumber))
 
-    closeAddModal()
+    showAddModal.value = false
+    addForm.value = { bank: '', accountNumber: '', name: '' }
+    selectedBank.value = null
+
+    notifySuccess('Sub-account added successfully.')
   } catch (err) {
     console.error('❌ Failed to add sub-account:', err)
-  }
-}
-
-async function confirmDeleteAccount() {
-  const account = selectedAccount.value
-
-  if (!account?.subaccountid) {
-    console.error('❌ No subaccount selected for delete')
-    return
-  }
-
-  try {
-    console.log('🗑️ Deleting subaccount:', account.subaccountid)
-
-    await updateSubaccountStatus(account.subaccountid, 99)
-
-    console.log('✅ Sub-account deleted successfully')
-
-    closeDeleteModal()
-  } catch (err) {
-    console.error('❌ Failed to delete sub-account:', err)
+    notifyError(err, 'Failed to add sub-account.')
+  } finally {
+    savingAdd.value = false
   }
 }
 
@@ -534,12 +617,16 @@ onMounted(async () => {
 
                   <label
                     class="relative inline-flex cursor-pointer items-center"
+                    :class="
+                      togglingAccountId === account.subaccountid ? 'opacity-50 cursor-wait' : ''
+                    "
                     title="Activate or disable sub-account"
                   >
                     <input
                       type="checkbox"
                       class="peer sr-only"
                       :checked="account.status === 1"
+                      :disabled="togglingAccountId === account.subaccountid"
                       @change="toggleAccountStatus(account)"
                     />
                     <span
@@ -749,7 +836,7 @@ onMounted(async () => {
                 density="comfortable"
                 placeholder="Search by bank name"
                 :loading="bankLoading"
-                :disabled="bankLoading"
+                :disabled="bankLoading || savingAdd"
                 :custom-filter="bankFilter"
                 clearable
                 hide-details
@@ -979,7 +1066,8 @@ onMounted(async () => {
                 inputmode="numeric"
                 autocomplete="off"
                 placeholder="Enter account number"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-[#5f9918] focus:ring-2 focus:ring-[#5f9918]/20"
+                :disabled="savingAdd"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-[#5f9918] focus:ring-2 focus:ring-[#5f9918]/20 disabled:bg-slate-50"
               />
             </div>
 
@@ -995,7 +1083,8 @@ onMounted(async () => {
                 type="text"
                 autocomplete="off"
                 placeholder="Enter sub-account name"
-                class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-[#5f9918] focus:ring-2 focus:ring-[#5f9918]/20"
+                :disabled="savingAdd"
+                class="w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-[#5f9918] focus:ring-2 focus:ring-[#5f9918]/20 disabled:bg-slate-50"
               />
             </div>
           </div>
@@ -1007,6 +1096,7 @@ onMounted(async () => {
             <button
               type="button"
               class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="savingAdd"
               @click="closeAddModal"
             >
               Discard
@@ -1015,17 +1105,16 @@ onMounted(async () => {
             <button
               type="button"
               class="rounded-xl bg-[#5f9918] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-[#4d7c13] disabled:cursor-not-allowed disabled:opacity-50"
-              :disabled="!addForm.bank || !addForm.accountNumber || !addForm.name"
+              :disabled="!addForm.bank || !addForm.accountNumber || !addForm.name || savingAdd"
               @click="submitAddSubaccount"
             >
-              Submit
+              {{ savingAdd ? 'Submitting...' : 'Submit' }}
             </button>
           </div>
         </div>
       </div>
     </Teleport>
 
-    <!-- EDIT SUB-ACCOUNT MODAL -->
     <!-- EDIT SUB-ACCOUNT MODAL -->
     <Teleport to="body">
       <div
@@ -1348,17 +1437,19 @@ onMounted(async () => {
           <div class="mt-6 flex gap-3">
             <button
               type="button"
-              class="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              class="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="deletingAccount"
               @click="closeDeleteModal"
             >
               Cancel
             </button>
             <button
               type="button"
-              class="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700"
+              class="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+              :disabled="deletingAccount"
               @click="confirmDeleteAccount"
             >
-              Delete
+              {{ deletingAccount ? 'Deleting...' : 'Delete' }}
             </button>
           </div>
         </div>

@@ -43,9 +43,7 @@ export const useBankStore = defineStore('bank', () => {
   // --------------------------------------------------
 
   const banks = ref<Bank[]>([])
-
   const loading = ref(false)
-
   const error = ref<string | null>(null)
 
   // --------------------------------------------------
@@ -54,13 +52,12 @@ export const useBankStore = defineStore('bank', () => {
   // --------------------------------------------------
 
   const merchantAccounts = ref<MerchantBankAccount[]>([])
-
   const accountsLoading = ref(false)
-
   const accountsError = ref<string | null>(null)
 
   // --------------------------------------------------
   // SEARCH REGISTERED BANKS
+  // Used only by Select Bank autocomplete
   // --------------------------------------------------
 
   const searchBanks = (query: string) => {
@@ -127,7 +124,9 @@ export const useBankStore = defineStore('bank', () => {
   async function fetchMerchantAccounts(accountId: string, merchantId: string, subaccountId = '') {
     if (!accountId || !merchantId) {
       accountsError.value = 'Account or merchant information is missing'
+
       merchantAccounts.value = []
+
       return
     }
 
@@ -179,10 +178,6 @@ export const useBankStore = defineStore('bank', () => {
 
       console.log('✅ MERCHANT BANK ACCOUNT ADDED:', data)
 
-      /*
-       * We refresh from the backend after adding instead
-       * of guessing the database-generated ID/date/status.
-       */
       await fetchMerchantAccounts(params.accountId, params.merchantId, params.subaccountId || '')
 
       return data
@@ -194,10 +189,68 @@ export const useBankStore = defineStore('bank', () => {
   }
 
   // --------------------------------------------------
-  // REMOVE ACCOUNT FROM LOCAL STORE
+  // UPDATE MERCHANT BANK STATUS
   //
-  // DO NOT use this as the final delete operation.
-  // The real delete API still needs to be supplied.
+  // 1  = Active
+  // 0  = Inactive
+  // 99 = Deleted
+  // --------------------------------------------------
+
+  async function updateMerchantAccountStatus(
+    account: MerchantBankAccount,
+    status: number,
+    accountId: string,
+    merchantId: string,
+    quidlyUserId: string
+  ) {
+    if (!account.bankid) {
+      throw new Error('Bank ID is missing')
+    }
+
+    if (!account.bankaccountno) {
+      throw new Error('Bank account number is missing')
+    }
+
+    if (!accountId) {
+      throw new Error('Account ID is missing')
+    }
+
+    if (!merchantId) {
+      throw new Error('Merchant ID is missing')
+    }
+
+    if (!quidlyUserId) {
+      throw new Error('Quidly user ID is missing')
+    }
+
+    const payload = {
+      accountId,
+      merchantId,
+      bankId: String(account.bankid),
+      bankAccountNo: String(account.bankaccountno),
+      quidlyUserId,
+      status
+    }
+
+    console.log('🔄 UPDATING MERCHANT BANK:', payload)
+
+    try {
+      const data = await BankService.updateMerchantSettlementBankStatus(payload)
+
+      console.log('✅ MERCHANT BANK STATUS UPDATED:', data)
+
+      return data
+    } catch (err) {
+      console.error('❌ Failed to update merchant bank status:', err)
+      throw err
+    }
+  }
+
+  // --------------------------------------------------
+  // REMOVE ACCOUNT LOCALLY
+  //
+  // Kept for compatibility with existing code.
+  // Actual delete uses status = 99 through the API.
   // --------------------------------------------------
 
   function removeMerchantAccountLocally(account: MerchantBankAccount) {
@@ -205,7 +258,6 @@ export const useBankStore = defineStore('bank', () => {
   }
 
   return {
-    // Registered banks
     banks,
     loading,
     error,
@@ -213,13 +265,13 @@ export const useBankStore = defineStore('bank', () => {
     searchBanks,
     fetchBanks,
 
-    // Merchant accounts
     merchantAccounts,
     accountsLoading,
     accountsError,
     totalMerchantAccounts,
     fetchMerchantAccounts,
     addMerchantAccount,
-    removeMerchantAccountLocally
+    removeMerchantAccountLocally,
+    updateMerchantAccountStatus
   }
 })

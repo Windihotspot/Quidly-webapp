@@ -70,7 +70,11 @@ export const useSubaccountStore = defineStore('subaccount', () => {
   // Add Subaccount
   // --------------------------------------------------
 
-  async function addSubaccount(subaccountname: string, bankid: string, bankaccountno: string) {
+  async function addSubaccount(
+    subaccountname: string,
+    bankid: string,
+    bankaccountno: string | number
+  ) {
     loading.value = true
     error.value = null
 
@@ -110,11 +114,11 @@ export const useSubaccountStore = defineStore('subaccount', () => {
 
   async function updateSubaccount(
     subaccountid: string,
-    bankid: string,
-    bankaccountno: string,
-    bankidOld: string,
-    bankaccountnoOld: string,
-    banksortcode: string
+    bankId: string,
+    bankAccountNo: string,
+    oldBankId: string,
+    oldBankAccountNo: string,
+    bankSortCode: string
   ) {
     loading.value = true
     error.value = null
@@ -128,39 +132,74 @@ export const useSubaccountStore = defineStore('subaccount', () => {
         throw new Error('Account ID, Merchant ID or Quidly User ID is not available')
       }
 
-      const cleanBankAccountNo = String(bankaccountno).trim()
-      const cleanOldBankAccountNo = String(bankaccountnoOld).trim()
-      const cleanSortCode = String(banksortcode).trim()
+      const cleanBankAccountNo = bankAccountNo.trim()
+      const cleanOldBankAccountNo = oldBankAccountNo.trim()
+      const cleanBankSortCode = bankSortCode.trim()
 
-      console.log('✏️ STORE UPDATE:', {
-        p_accountid: accountId,
-        p_merchantid: merchantId,
-        p_subaccountid: subaccountid,
-        p_quidlyuserid: quidlyUserId,
-        p_bankid: bankid,
-        p_bankaccountno: cleanBankAccountNo,
-        p_bankid_old: bankidOld,
-        p_bankaccountno_old: cleanOldBankAccountNo,
-        p_banksortcode: cleanSortCode
-      })
+      // Validate digits before converting.
+      if (!/^\d+$/.test(cleanBankAccountNo)) {
+        throw new Error('Bank account number must contain digits only')
+      }
 
-      const response = await SubaccountService.updateSubaccount({
-        p_accountid: accountId,
-        p_merchantid: merchantId,
-        p_subaccountid: subaccountid,
-        p_quidlyuserid: quidlyUserId,
-        p_bankid: bankid,
-        p_bankaccountno: cleanBankAccountNo,
-        p_bankid_old: bankidOld,
-        p_bankaccountno_old: cleanOldBankAccountNo,
-        p_banksortcode: cleanSortCode
-      })
+      if (!/^\d+$/.test(cleanOldBankAccountNo)) {
+        throw new Error('Old bank account number must contain digits only')
+      }
 
+      if (cleanBankSortCode && !/^\d+$/.test(cleanBankSortCode)) {
+        throw new Error('Bank sort code must contain digits only')
+      }
+
+      const newAccountNumber = Number(cleanBankAccountNo)
+      const oldAccountNumber = Number(cleanOldBankAccountNo)
+      const sortCode = Number(cleanBankSortCode || '0')
+
+      if (!Number.isSafeInteger(newAccountNumber)) {
+        throw new Error('Bank account number is too large')
+      }
+
+      if (!Number.isSafeInteger(oldAccountNumber)) {
+        throw new Error('Old bank account number is too large')
+      }
+
+      if (!Number.isSafeInteger(sortCode)) {
+        throw new Error('Bank sort code is invalid')
+      }
+
+      const payload = {
+        p_accountid: String(accountId),
+        p_merchantid: String(merchantId),
+        p_subaccountid: String(subaccountid),
+        p_quidlyuserid: String(quidlyUserId),
+        p_bankid: String(bankId),
+
+        // Swagger requires numbers.
+        p_bankaccountno: newAccountNumber,
+        p_bankid_old: String(oldBankId),
+        p_bankaccountno_old: oldAccountNumber,
+        p_banksortcode: sortCode
+      }
+
+      console.log('✏️ UPDATE SUBACCOUNT API PAYLOAD:', payload)
+
+      console.log('NEW ACCOUNT TYPE:', typeof payload.p_bankaccountno)
+
+      console.log('OLD ACCOUNT TYPE:', typeof payload.p_bankaccountno_old)
+
+      console.log('SORT CODE TYPE:', typeof payload.p_banksortcode)
+
+      const response = await SubaccountService.updateSubaccount(payload)
+
+      console.log('✏️ UPDATE SUBACCOUNT RESPONSE:', response)
+
+      // The service performs the API call.
+      // Refresh the list so the new bank details appear immediately.
       await fetchSubaccounts()
 
       return response
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update subaccount'
+
+      console.error('❌ Store failed to update subaccount:', err)
 
       throw err
     } finally {
@@ -181,22 +220,33 @@ export const useSubaccountStore = defineStore('subaccount', () => {
     error.value = null
 
     try {
-      if (!subaccountid) {
-        throw new Error('Subaccount ID is required')
+      const accountId = authStore.accountId
+      const merchantId = authStore.activeMerchantId
+      const quidlyUserId = authStore.quidlyUserId
+
+      if (!accountId || !merchantId || !quidlyUserId) {
+        throw new Error('Account ID, Merchant ID or Quidly User ID is not available')
       }
 
-      console.log('🗑️ STATUS UPDATE:', {
-        subaccountid,
-        status
-      })
+      const payload = {
+        p_accountid: accountId,
+        p_merchantid: merchantId,
+        p_subaccountid: subaccountid,
+        p_quidlyuserid: quidlyUserId,
+        p_status: status
+      }
 
-      const response = await SubaccountService.updateSubaccountStatus(subaccountid, status)
+      console.log('🗑️ ACTUAL DELETE/STATUS PAYLOAD:', payload)
+
+      const response = await SubaccountService.updateSubaccountStatus(payload)
 
       await fetchSubaccounts()
 
       return response
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update subaccount status'
+
+      console.error('❌ Failed to update subaccount status:', err)
 
       throw err
     } finally {
@@ -213,10 +263,8 @@ export const useSubaccountStore = defineStore('subaccount', () => {
     loading,
     error,
     searchQuery,
-
     filteredSubaccounts,
     totalSubaccounts,
-
     fetchSubaccounts,
     addSubaccount,
     updateSubaccount,

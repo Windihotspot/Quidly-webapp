@@ -1,19 +1,12 @@
 import { post } from '@/services/api/api.service'
 
-// --------------------------------------------------
-// Active Bank
-// --------------------------------------------------
-
 export interface ActiveBank {
   bankid: string
   bankaccountno: string
   banksortcode: string
   status: number
+  bankname?: string
 }
-
-// --------------------------------------------------
-// Subaccount
-// --------------------------------------------------
 
 export interface Subaccount {
   accountid: string
@@ -26,10 +19,6 @@ export interface Subaccount {
   status: number
   activeBank: ActiveBank | null
 }
-
-// --------------------------------------------------
-// Get Subaccounts
-// --------------------------------------------------
 
 export interface GetSubaccountsResponse {
   status: number
@@ -59,9 +48,9 @@ export async function getSubaccounts(accountId: string, merchantId: string): Pro
   }
 }
 
-// --------------------------------------------------
-// Add Subaccount
-// --------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/* ADD SUBACCOUNT                                                             */
+/* -------------------------------------------------------------------------- */
 
 export interface AddSubaccountPayload {
   p_accountid: string
@@ -85,7 +74,7 @@ export interface AddSubaccountResponse {
 
 export async function addSubaccount(payload: AddSubaccountPayload): Promise<AddSubaccountResponse> {
   try {
-    const cleanPayload: AddSubaccountPayload = {
+    const cleanPayload = {
       ...payload,
       p_bankaccountno: String(payload.p_bankaccountno).trim()
     }
@@ -95,6 +84,10 @@ export async function addSubaccount(payload: AddSubaccountPayload): Promise<AddS
     const response = await post<AddSubaccountResponse>('/add_subaccount_and_bank', cleanPayload)
 
     console.log('➕ ADD SUBACCOUNT RESPONSE:', response.data)
+
+    if (response.data?.error) {
+      throw new Error(response.data.error)
+    }
 
     if (response.data?.status !== 1) {
       throw new Error(response.data?.error || 'Failed to add subaccount')
@@ -107,9 +100,9 @@ export async function addSubaccount(payload: AddSubaccountPayload): Promise<AddS
   }
 }
 
-// --------------------------------------------------
-// Update Subaccount
-// --------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/* UPDATE SUBACCOUNT BANK                                                     */
+/* -------------------------------------------------------------------------- */
 
 export interface UpdateSubaccountPayload {
   p_accountid: string
@@ -117,16 +110,19 @@ export interface UpdateSubaccountPayload {
   p_subaccountid: string
   p_quidlyuserid: string
   p_bankid: string
-  p_bankaccountno: string
+
+  // Swagger defines these as numbers.
+  p_bankaccountno: number
   p_bankid_old: string
-  p_bankaccountno_old: string
-  p_banksortcode: string
+  p_bankaccountno_old: number
+  p_banksortcode: number
 }
 
 export interface UpdateSubaccountResponse {
-  status: number
+  status?: number
   subaccount?: Record<string, unknown>
   error?: string
+  [key: string]: unknown
 }
 
 export async function updateSubaccount(
@@ -134,24 +130,72 @@ export async function updateSubaccount(
 ): Promise<UpdateSubaccountResponse> {
   try {
     const cleanPayload: UpdateSubaccountPayload = {
-      ...payload,
-      p_bankaccountno: String(payload.p_bankaccountno).trim(),
-      p_bankaccountno_old: String(payload.p_bankaccountno_old).trim(),
-      p_banksortcode: String(payload.p_banksortcode).trim()
+      p_accountid: String(payload.p_accountid),
+      p_merchantid: String(payload.p_merchantid),
+      p_subaccountid: String(payload.p_subaccountid),
+      p_quidlyuserid: String(payload.p_quidlyuserid),
+      p_bankid: String(payload.p_bankid),
+
+      // Keep these as actual JSON numbers.
+      p_bankaccountno: Number(payload.p_bankaccountno),
+      p_bankid_old: String(payload.p_bankid_old),
+      p_bankaccountno_old: Number(payload.p_bankaccountno_old),
+      p_banksortcode: Number(payload.p_banksortcode)
+    }
+
+    // Final validation before sending to the API.
+    if (!Number.isSafeInteger(cleanPayload.p_bankaccountno) || cleanPayload.p_bankaccountno <= 0) {
+      throw new Error('Invalid bank account number')
+    }
+
+    if (
+      !Number.isSafeInteger(cleanPayload.p_bankaccountno_old) ||
+      cleanPayload.p_bankaccountno_old <= 0
+    ) {
+      throw new Error('Invalid old bank account number')
+    }
+
+    if (!Number.isSafeInteger(cleanPayload.p_banksortcode) || cleanPayload.p_banksortcode < 0) {
+      throw new Error('Invalid bank sort code')
     }
 
     console.log('✏️ UPDATE SUBACCOUNT PAYLOAD:', cleanPayload)
+
+    console.log(
+      '🏦 NEW ACCOUNT:',
+      cleanPayload.p_bankaccountno,
+      typeof cleanPayload.p_bankaccountno
+    )
+
+    console.log(
+      '🏦 OLD ACCOUNT:',
+      cleanPayload.p_bankaccountno_old,
+      typeof cleanPayload.p_bankaccountno_old
+    )
+
+    console.log('🏦 SORT CODE:', cleanPayload.p_banksortcode, typeof cleanPayload.p_banksortcode)
 
     const response = await post<UpdateSubaccountResponse>('/update_subaccount_bank', cleanPayload)
 
     console.log('✏️ UPDATE SUBACCOUNT RESPONSE:', response.data)
 
+    /*
+     * The Swagger endpoint documents HTTP 200 as success.
+     *
+     * Do NOT require:
+     *   response.data.status === 1
+     *
+     * because the Swagger response schema shows:
+     *
+     * {
+     *   "status": 0,
+     *   "subaccount": {}
+     * }
+     *
+     * Axios will already throw for HTTP 400/500 responses.
+     */
     if (response.data?.error) {
       throw new Error(response.data.error)
-    }
-
-    if (response.data?.status !== 1) {
-      throw new Error(response.data?.error || 'Failed to update subaccount')
     }
 
     return response.data
@@ -161,45 +205,40 @@ export async function updateSubaccount(
   }
 }
 
-// --------------------------------------------------
-// Update Subaccount Status
-//
-// 1  = Active
-// 0  = Inactive
-// 99 = Deleted
-// --------------------------------------------------
+/* -------------------------------------------------------------------------- */
+/* UPDATE SUBACCOUNT STATUS                                                   */
+/* -------------------------------------------------------------------------- */
+
+export interface UpdateSubaccountStatusPayload {
+  p_accountid: string
+  p_merchantid: string
+  p_subaccountid: string
+  p_quidlyuserid: string
+  p_status: number
+}
 
 export interface UpdateSubaccountStatusResponse {
-  status: number
-  error?: string
+  status?: number
   message?: string
+  error?: string
+  [key: string]: unknown
 }
 
 export async function updateSubaccountStatus(
-  subaccountid: string,
-  status: number
+  payload: UpdateSubaccountStatusPayload
 ): Promise<UpdateSubaccountStatusResponse> {
   try {
-    const payload = {
-      p_subaccountid: subaccountid,
-      p_status: status
-    }
-
-    console.log('🗑️ UPDATE SUBACCOUNT STATUS PAYLOAD:', payload)
+    console.log('🔄 UPDATE SUBACCOUNT STATUS PAYLOAD:', payload)
 
     const response = await post<UpdateSubaccountStatusResponse>(
       '/mdb/procedure/updatestatus_Merchant_Subaccount_v2',
       payload
     )
 
-    console.log('🗑️ UPDATE SUBACCOUNT STATUS RESPONSE:', response.data)
+    console.log('🔄 UPDATE SUBACCOUNT STATUS RESPONSE:', response.data)
 
     if (response.data?.error) {
       throw new Error(response.data.error)
-    }
-
-    if (response.data?.status !== 1) {
-      throw new Error(response.data?.error || 'Failed to update subaccount status')
     }
 
     return response.data
@@ -208,10 +247,6 @@ export async function updateSubaccountStatus(
     throw error
   }
 }
-
-// --------------------------------------------------
-// Default Service
-// --------------------------------------------------
 
 export default {
   getSubaccounts,

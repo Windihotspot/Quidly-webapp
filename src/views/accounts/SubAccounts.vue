@@ -4,6 +4,7 @@ import { storeToRefs } from 'pinia'
 import MainLayout from '@/layouts/MainLayout.vue'
 import { useSubaccountStore } from '@/stores/subaccount'
 import { useBankStore } from '@/stores/bank'
+import Swal from 'sweetalert2'
 
 // --------------------------------------------------
 // Stores
@@ -29,7 +30,9 @@ function notifyError(err: unknown, fallback: string) {
     buttonsStyling: false,
     confirmButtonText: 'Ok, got it!',
     heightAuto: false,
-    customClass: { confirmButton: 'btn btn-primary' }
+    customClass: {
+      confirmButton: 'btn btn-primary'
+    }
   })
 }
 
@@ -40,7 +43,9 @@ function notifyWarning(text: string) {
     buttonsStyling: false,
     confirmButtonText: 'Ok',
     heightAuto: false,
-    customClass: { confirmButton: 'btn btn-primary' }
+    customClass: {
+      confirmButton: 'btn btn-primary'
+    }
   })
 }
 
@@ -92,11 +97,17 @@ function handleBankChange(bank: any) {
 function handleEditBankChange(bank: any) {
   editSelectedBank.value = bank
 
+  if (!bank) {
+    editForm.value.bank = ''
+    editForm.value.bankSortCode = ''
+    return
+  }
+
   editForm.value.bank = bank?.bankid ? String(bank.bankid) : ''
 
-  if (bank?.longcode) {
+  if (bank?.longcode != null) {
     editForm.value.bankSortCode = String(bank.longcode)
-  } else if (bank?.code) {
+  } else if (bank?.code != null) {
     editForm.value.bankSortCode = String(bank.code)
   } else {
     editForm.value.bankSortCode = ''
@@ -154,8 +165,9 @@ const addForm = ref({
 // --------------------------------------------------
 // Edit form
 //
-// Keep account numbers as strings.
-// This prevents leading zeros from being lost.
+// Keep account numbers as strings in the UI.
+// Conversion to numbers happens only before the
+// API request because Swagger requires numeric fields.
 // --------------------------------------------------
 
 const editForm = ref({
@@ -198,15 +210,13 @@ function openEditSubaccount(account: any) {
     ...account
   }
 
-  const currentBankId = activeBank?.bankid ? String(activeBank.bankid) : ''
+  const currentBankId = activeBank?.bankid != null ? String(activeBank.bankid) : ''
 
-  const currentAccountNumber = activeBank?.bankaccountno ? String(activeBank.bankaccountno) : ''
+  const currentAccountNumber =
+    activeBank?.bankaccountno != null ? String(activeBank.bankaccountno) : ''
 
-  const currentSortCode = activeBank?.banksortcode ? String(activeBank.banksortcode) : ''
+  const currentSortCode = activeBank?.banksortcode != null ? String(activeBank.banksortcode) : ''
 
-  // IMPORTANT:
-  // oldBank and oldAccountNumber are the values
-  // required by update_subaccount_bank.
   editForm.value = {
     bank: currentBankId,
     accountNumber: currentAccountNumber,
@@ -248,9 +258,13 @@ async function saveAccountChanges() {
   const account = selectedAccount.value
 
   if (!account?.subaccountid) {
-    console.error('❌ No subaccount selected for edit')
+    notifyError('No subaccount selected', 'Please select a subaccount to edit.')
     return
   }
+
+  // ------------------------------------------------
+  // Read and clean form values
+  // ------------------------------------------------
 
   const bankId = String(editForm.value.bank || '').trim()
 
@@ -262,71 +276,122 @@ async function saveAccountChanges() {
 
   const bankSortCode = String(editForm.value.bankSortCode || '').trim()
 
-  // --------------------------------------------------
+  // ------------------------------------------------
   // Validation
-  // --------------------------------------------------
+  // ------------------------------------------------
 
   if (!bankId) {
-    console.error('❌ Please select a bank')
+    notifyWarning('Please select a bank.')
     return
   }
 
   if (!accountNumber) {
-    console.error('❌ Bank account number is required')
+    notifyWarning('Please enter the bank account number.')
     return
   }
 
   if (!/^\d+$/.test(accountNumber)) {
-    notifyWarning('Bank account number must contain numbers only.')
+    notifyWarning('Bank account number must contain digits only.')
     return
   }
 
   if (!oldBankId) {
-    console.error('❌ Existing bank ID is missing')
+    notifyWarning('Previous bank information is missing.')
     return
   }
 
   if (!oldAccountNumber) {
-    console.error('❌ Existing bank account number is missing')
+    notifyWarning('Previous bank account number is missing.')
     return
   }
+
+  if (!/^\d+$/.test(oldAccountNumber)) {
+    notifyWarning('Previous bank account number is invalid.')
+    return
+  }
+
+  if (bankSortCode && !/^\d+$/.test(bankSortCode)) {
+    notifyWarning('Bank sort code must contain digits only.')
+    return
+  }
+
+  // ------------------------------------------------
+  // Validate numeric API values
+  // ------------------------------------------------
+
+  const newAccountNumber = Number(accountNumber)
+  const previousAccountNumber = Number(oldAccountNumber)
+  const sortCode = Number(bankSortCode || '0')
+
+  if (!Number.isSafeInteger(newAccountNumber) || newAccountNumber <= 0) {
+    notifyWarning('The new bank account number is invalid.')
+    return
+  }
+
+  if (!Number.isSafeInteger(previousAccountNumber) || previousAccountNumber <= 0) {
+    notifyWarning('The previous bank account number is invalid.')
+    return
+  }
+
+  if (!Number.isSafeInteger(sortCode) || sortCode < 0) {
+    notifyWarning('The bank sort code is invalid.')
+    return
+  }
+
+  // ------------------------------------------------
+  // Start saving
+  // ------------------------------------------------
 
   savingEdit.value = true
 
   try {
-    console.log('✏️ UPDATE SUBACCOUNT:', {
+    console.log('✏️ SAVING SUBACCOUNT:', {
       subaccountid: account.subaccountid,
       bankId,
       accountNumber,
       oldBankId,
       oldAccountNumber,
-      bankSortCode
+      bankSortCode,
+
+      // These are the actual types expected
+      // by the Swagger API.
+      newAccountNumber,
+      previousAccountNumber,
+      sortCode
     })
 
     /*
-     * Your Pinia store currently expects numbers for
-     * these arguments, so convert here.
+     * The component keeps account numbers as strings.
      *
-     * The service converts them back to strings before
-     * sending the request.
+     * The store converts them to numbers before
+     * sending the request to:
+     *
+     * POST /update_subaccount_bank
      */
     await updateSubaccount(
       account.subaccountid,
       bankId,
       accountNumber,
       oldBankId,
-      Number(oldAccountNumber),
-      Number(bankSortCode || 0)
+      oldAccountNumber,
+      bankSortCode
     )
 
-    console.log('✅ Sub-account updated successfully')
-
-    await fetchSubaccounts()
+    console.log('✅ SUBACCOUNT UPDATED SUCCESSFULLY')
 
     closeEditModal()
+
+    await Swal.fire({
+      icon: 'success',
+      title: 'Updated successfully',
+      text: 'The subaccount bank details have been updated.',
+      confirmButtonColor: '#5f9918',
+      heightAuto: false
+    })
   } catch (err) {
-    console.error('❌ Failed to update sub-account:', err)
-    notifyError(err, 'Failed to update sub-account.')
+    console.error('❌ Failed to save subaccount changes:', err)
+
+    notifyError(err, 'Failed to update subaccount.')
   } finally {
     savingEdit.value = false
   }
@@ -353,11 +418,14 @@ async function toggleAccountStatus(account: any) {
 
     await updateSubaccountStatus(account.subaccountid, nextStatus)
 
-    await fetchSubaccounts()
+    /*
+     * updateSubaccountStatus already refreshes
+     * the subaccounts inside the Pinia store.
+     */
   } catch (err) {
     console.error('❌ Failed to toggle sub-account status:', err)
 
-    await fetchSubaccounts()
+    notifyError(err, 'Failed to update subaccount status.')
   } finally {
     changingStatus.value = null
   }
@@ -399,33 +467,25 @@ async function confirmDeleteAccount() {
   const account = selectedDeleteAccount.value
 
   if (!account?.subaccountid) {
-    console.error('❌ No subaccount selected for delete')
     return
   }
+
+  // Close popup immediately
+  showDeleteModal.value = false
+  selectedDeleteAccount.value = null
 
   deletingAccount.value = true
 
   try {
     console.log('🗑️ Deleting subaccount:', account.subaccountid)
 
-    /*
-     * 99 = Deleted
-     *
-     * IMPORTANT:
-     * This uses the existing store method.
-     * The current store endpoint is returning 404
-     * because /update_subaccount_status has not
-     * been confirmed in Swagger yet.
-     */
     await updateSubaccountStatus(account.subaccountid, 99)
 
     console.log('✅ Sub-account deleted successfully')
-
-    await fetchSubaccounts()
-
-    closeDeleteModal()
   } catch (err) {
     console.error('❌ Failed to delete sub-account:', err)
+
+    notifyError(err, 'Failed to delete subaccount.')
   } finally {
     deletingAccount.value = false
   }
@@ -477,13 +537,30 @@ async function submitAddSubaccount() {
 
   const name = String(addForm.value.name || '').trim()
 
-  if (!bankId || !accountNumber || !name) {
-    console.error('❌ Bank, account number and name are required')
+  if (!bankId) {
+    notifyWarning('Please select a bank.')
+    return
+  }
+
+  if (!accountNumber) {
+    notifyWarning('Please enter the bank account number.')
+    return
+  }
+
+  if (!name) {
+    notifyWarning('Please enter the subaccount name.')
     return
   }
 
   if (!/^\d+$/.test(accountNumber)) {
     notifyWarning('Bank account number must contain numbers only.')
+    return
+  }
+
+  const numericAccountNumber = Number(accountNumber)
+
+  if (!Number.isSafeInteger(numericAccountNumber) || numericAccountNumber <= 0) {
+    notifyWarning('The bank account number is invalid.')
     return
   }
 
@@ -496,15 +573,28 @@ async function submitAddSubaccount() {
       accountNumber
     })
 
-    await addSubaccount(name, bankId, Number(accountNumber))
+    await addSubaccount(name, bankId, numericAccountNumber)
 
     console.log('✅ Sub-account added successfully')
 
-    await fetchSubaccounts()
+    /*
+     * addSubaccount already refreshes the list
+     * inside the Pinia store.
+     */
 
     closeAddModal()
+
+    await Swal.fire({
+      icon: 'success',
+      title: 'Subaccount added',
+      text: 'The subaccount has been added successfully.',
+      confirmButtonColor: '#5f9918',
+      heightAuto: false
+    })
   } catch (err) {
     console.error('❌ Failed to add sub-account:', err)
+
+    notifyError(err, 'Failed to add subaccount.')
   } finally {
     savingAdd.value = false
   }
@@ -665,37 +755,6 @@ onMounted(async () => {
           </div>
 
           <!-- =====================================================
-               SEARCH & FILTER
-          ====================================================== -->
-          <div
-            class="flex flex-col gap-3 border-b border-slate-100 px-4 py-3.5 sm:flex-row sm:items-center sm:px-5"
-          >
-            <!-- Search -->
-            <div class="relative w-full sm:max-w-xs">
-              <span
-                class="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-slate-400"
-              >
-                ⌕
-              </span>
-
-              <input
-                v-model="searchQuery"
-                type="search"
-                placeholder="Search sub-accounts"
-                class="w-full rounded-lg border border-slate-200 bg-slate-50 py-1.5 pl-8 pr-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-[#5f9918] focus:bg-white focus:outline-none focus:ring-1 focus:ring-[#5f9918]"
-              />
-            </div>
-
-            <!-- Status -->
-            <button
-              type="button"
-              class="flex shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
-            >
-              All statuses
-            </button>
-          </div>
-
-          <!-- =====================================================
                ACCOUNT LIST
           ====================================================== -->
           <div class="divide-y divide-slate-100">
@@ -817,32 +876,17 @@ onMounted(async () => {
                   ================================================== -->
                   <div class="flex shrink-0 items-center gap-2 pl-11 sm:pl-0">
                     <!-- EDIT -->
-                    <button
-                      type="button"
-                      class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-600 transition hover:border-[#5f9918] hover:bg-slate-50 hover:text-[#5f9918] disabled:cursor-not-allowed disabled:opacity-50"
-                      title="Edit sub-account"
-                      aria-label="Edit sub-account"
-                      :disabled="savingEdit"
+                    <v-btn
+                      icon
+                      variant="text"
+                      size="small"
+                      class="!min-w-0 !w-9 !h-9"
+                      aria-label="Edit subaccount"
+                      title="Edit subaccount"
                       @click="openEditSubaccount(account)"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                      >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 20h9" />
-
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M16.5 3.5a2.121 2.121 0 013 3L8 18l-4 1-1 4 4-1L16.5 3.5Z"
-                        />
-                      </svg>
-                    </button>
-
+                      <v-icon icon="mdi-pencil" size="20" />
+                    </v-btn>
                     <!-- STATUS TOGGLE -->
                     <label
                       class="relative inline-flex cursor-pointer items-center"
@@ -866,35 +910,18 @@ onMounted(async () => {
                     </label>
 
                     <!-- DELETE -->
-                    <button
-                      type="button"
-                      class="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-red-200 bg-red-50 text-red-600 transition hover:border-red-300 hover:bg-red-100 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
-                      title="Delete sub-account"
-                      aria-label="Delete sub-account"
+                    <v-btn
+                      icon
+                      variant="text"
+                      size="small"
+                      class="!min-w-0 !w-9 !h-9"
+                      aria-label="Delete subaccount"
+                      title="Delete subaccount"
                       :disabled="deletingAccount"
                       @click="openDeleteAccountModal(account)"
                     >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        class="h-4 w-4"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="1.8"
-                      >
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 6h18" />
-
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 6V4h8v2" />
-
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          d="M19 6l-1 14H6L5 6"
-                        />
-
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 11v5M14 11v5" />
-                      </svg>
-                    </button>
+                      <v-icon icon="mdi-trash-can-outline" size="20" />
+                    </v-btn>
                   </div>
                 </div>
 

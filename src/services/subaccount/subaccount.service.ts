@@ -1,4 +1,3 @@
-
 import { post } from '@/services/api/api.service'
 
 // --------------------------------------------------
@@ -38,18 +37,12 @@ export interface GetSubaccountsResponse {
   error?: string
 }
 
-export async function getSubaccounts(
-  accountId: string,
-  merchantId: string
-): Promise<Subaccount[]> {
+export async function getSubaccounts(accountId: string, merchantId: string): Promise<Subaccount[]> {
   try {
-    const response = await post<GetSubaccountsResponse>(
-      '/get_subaccounts_with_banks',
-      {
-        p_accountid: accountId,
-        p_merchantid: merchantId
-      }
-    )
+    const response = await post<GetSubaccountsResponse>('/get_subaccounts_with_banks', {
+      p_accountid: accountId,
+      p_merchantid: merchantId
+    })
 
     if (response.data?.error) {
       throw new Error(response.data.error)
@@ -65,6 +58,10 @@ export async function getSubaccounts(
     throw error
   }
 }
+
+// --------------------------------------------------
+// Add Subaccount
+// --------------------------------------------------
 
 export interface AddSubaccountPayload {
   p_accountid: string
@@ -86,9 +83,7 @@ export interface AddSubaccountResponse {
   error?: string
 }
 
-export async function addSubaccount(
-  payload: AddSubaccountPayload
-): Promise<AddSubaccountResponse> {
+export async function addSubaccount(payload: AddSubaccountPayload): Promise<AddSubaccountResponse> {
   try {
     const cleanPayload: AddSubaccountPayload = {
       ...payload,
@@ -102,21 +97,19 @@ export async function addSubaccount(
     console.log('➕ ADD SUBACCOUNT RESPONSE:', response.data)
 
     if (response.data?.status !== 1) {
-      throw new Error(
-        response.data?.error || 'Failed to add subaccount'
-      )
+      throw new Error(response.data?.error || 'Failed to add subaccount')
     }
 
     return response.data
   } catch (error) {
-    console.error('Failed to add subaccount:', error)
+    console.error('❌ Failed to add subaccount:', error)
     throw error
   }
 }
 
-/* =========================
-   UPDATE SUBACCOUNT
-========================= */
+// --------------------------------------------------
+// Update Subaccount
+// --------------------------------------------------
 
 export interface UpdateSubaccountPayload {
   p_accountid: string
@@ -163,13 +156,66 @@ export async function updateSubaccount(
 
     return response.data
   } catch (error) {
-    console.error('Failed to update subaccount:', error)
+    console.error('❌ Failed to update subaccount:', error)
     throw error
   }
 }
 
+// --------------------------------------------------
+// Update Subaccount Status
+//
+// 1  = Active
+// 0  = Inactive
+// 99 = Deleted
+// --------------------------------------------------
+
+export interface UpdateSubaccountStatusResponse {
+  status: number
+  error?: string
+  message?: string
+}
+
+export async function updateSubaccountStatus(
+  subaccountid: string,
+  status: number
+): Promise<UpdateSubaccountStatusResponse> {
+  try {
+    const payload = {
+      p_subaccountid: subaccountid,
+      p_status: status
+    }
+
+    console.log('🗑️ UPDATE SUBACCOUNT STATUS PAYLOAD:', payload)
+
+    const response = await post<UpdateSubaccountStatusResponse>(
+      '/mdb/procedure/updatestatus_Merchant_Subaccount_v2',
+      payload
+    )
+
+    console.log('🗑️ UPDATE SUBACCOUNT STATUS RESPONSE:', response.data)
+
+    if (response.data?.error) {
+      throw new Error(response.data.error)
+    }
+
+    if (response.data?.status !== 1) {
+      throw new Error(response.data?.error || 'Failed to update subaccount status')
+    }
+
+    return response.data
+  } catch (error) {
+    console.error('❌ Failed to update subaccount status:', error)
+    throw error
+  }
+}
+
+// --------------------------------------------------
+// Default Service
+// --------------------------------------------------
+
 export default {
   getSubaccounts,
   addSubaccount,
-  updateSubaccount
+  updateSubaccount,
+  updateSubaccountStatus
 }

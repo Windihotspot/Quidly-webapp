@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import SubaccountService, {
-  type Subaccount
-} from '@/services/subaccount/subaccount.service'
+import SubaccountService, { type Subaccount } from '@/services/subaccount/subaccount.service'
 import { useAuthStore } from '@/stores/auth'
 
 export const useSubaccountStore = defineStore('subaccount', () => {
@@ -32,9 +30,7 @@ export const useSubaccountStore = defineStore('subaccount', () => {
         account.merchantid,
         account.activeBank?.bankaccountno,
         account.activeBank?.bankid
-      ].some((value) =>
-        value?.toString().toLowerCase().includes(query)
-      )
+      ].some((value) => value?.toString().toLowerCase().includes(query))
     )
   })
 
@@ -56,17 +52,11 @@ export const useSubaccountStore = defineStore('subaccount', () => {
         throw new Error('Account ID or Merchant ID is not available')
       }
 
-      const data = await SubaccountService.getSubaccounts(
-        accountId,
-        merchantId
-      )
+      const data = await SubaccountService.getSubaccounts(accountId, merchantId)
 
       subaccounts.value = data
     } catch (err) {
-      error.value =
-        err instanceof Error
-          ? err.message
-          : 'Failed to fetch subaccounts'
+      error.value = err instanceof Error ? err.message : 'Failed to fetch subaccounts'
 
       subaccounts.value = []
 
@@ -80,11 +70,7 @@ export const useSubaccountStore = defineStore('subaccount', () => {
   // Add Subaccount
   // --------------------------------------------------
 
-  async function addSubaccount(
-    subaccountname: string,
-    bankid: string,
-    bankaccountno: string
-  ) {
+  async function addSubaccount(subaccountname: string, bankid: string, bankaccountno: string) {
     loading.value = true
     error.value = null
 
@@ -94,9 +80,7 @@ export const useSubaccountStore = defineStore('subaccount', () => {
       const quidlyUserId = authStore.quidlyUserId
 
       if (!accountId || !merchantId || !quidlyUserId) {
-        throw new Error(
-          'Account ID, Merchant ID or Quidly User ID is not available'
-        )
+        throw new Error('Account ID, Merchant ID or Quidly User ID is not available')
       }
 
       const response = await SubaccountService.addSubaccount({
@@ -105,17 +89,14 @@ export const useSubaccountStore = defineStore('subaccount', () => {
         p_subaccountname: subaccountname,
         p_quidlyuserid: quidlyUserId,
         p_bankid: bankid,
-        p_bankaccountno: bankaccountno
+        p_bankaccountno: String(bankaccountno).trim()
       })
 
       await fetchSubaccounts()
 
       return response
     } catch (err) {
-      error.value =
-        err instanceof Error
-          ? err.message
-          : 'Failed to add subaccount'
+      error.value = err instanceof Error ? err.message : 'Failed to add subaccount'
 
       throw err
     } finally {
@@ -125,93 +106,6 @@ export const useSubaccountStore = defineStore('subaccount', () => {
 
   // --------------------------------------------------
   // Update Subaccount Bank Details
-  // --------------------------------------------------
-
-  async function updateSubaccount(
-    subaccountid: string,
-    bankid: string,
-    bankaccountno: string,
-    bankidOld: string,
-    bankaccountnoOld: string,
-    banksortcode: number
-  ) {
-    loading.value = true
-    error.value = null
-
-    try {
-      const accountId = authStore.accountId
-      const merchantId = authStore.activeMerchantId
-      const quidlyUserId = authStore.quidlyUserId
-
-      if (!accountId || !merchantId || !quidlyUserId) {
-        throw new Error(
-          'Account ID, Merchant ID or Quidly User ID is not available'
-        )
-      }
-
-      // --------------------------------------------------
-      // Debug: confirm exactly what is being sent
-      // --------------------------------------------------
-
-      console.log('🚨 UPDATE PAYLOAD:', {
-        p_accountid: accountId,
-        p_merchantid: merchantId,
-        p_subaccountid: subaccountid,
-        p_quidlyuserid: quidlyUserId,
-        p_bankid: bankid,
-        p_bankaccountno: bankaccountno,
-        p_bankid_old: bankidOld,
-        p_bankaccountno_old: bankaccountnoOld,
-        p_banksortcode: banksortcode
-      })
-
-      console.log('🚨 TYPES:', {
-        bankaccountno: typeof bankaccountno,
-        bankaccountnoOld: typeof bankaccountnoOld,
-        banksortcode: typeof banksortcode
-      })
-
-      // --------------------------------------------------
-      // Update backend
-      // --------------------------------------------------
-
-      const response = await SubaccountService.updateSubaccount({
-        p_accountid: accountId,
-        p_merchantid: merchantId,
-        p_subaccountid: subaccountid,
-        p_quidlyuserid: quidlyUserId,
-        p_bankid: bankid,
-        p_bankaccountno: bankaccountno,
-        p_bankid_old: bankidOld,
-        p_bankaccountno_old: bankaccountnoOld,
-        p_banksortcode: banksortcode
-      })
-
-      // --------------------------------------------------
-      // Refresh list
-      // --------------------------------------------------
-
-      await fetchSubaccounts()
-
-      return response
-    } catch (err) {
-      error.value =
-        err instanceof Error
-          ? err.message
-          : 'Failed to update subaccount'
-
-      throw err
-    } finally {
-      loading.value = false
-    }
-  }
-
-  // --------------------------------------------------
-  // Update Subaccount Status
-  //
-  // 1  = Active
-  // 0  = Inactive
-  // 99 = Deleted
   // --------------------------------------------------
 
   async function updateSubaccount(
@@ -231,18 +125,23 @@ export const useSubaccountStore = defineStore('subaccount', () => {
       const quidlyUserId = authStore.quidlyUserId
 
       if (!accountId || !merchantId || !quidlyUserId) {
-        throw new Error(
-          'Account ID, Merchant ID or Quidly User ID is not available'
-        )
+        throw new Error('Account ID, Merchant ID or Quidly User ID is not available')
       }
 
+      const cleanBankAccountNo = String(bankaccountno).trim()
+      const cleanOldBankAccountNo = String(bankaccountnoOld).trim()
+      const cleanSortCode = String(banksortcode).trim()
+
       console.log('✏️ STORE UPDATE:', {
-        subaccountid,
-        bankid,
-        bankaccountno,
-        bankidOld,
-        bankaccountnoOld,
-        banksortcode
+        p_accountid: accountId,
+        p_merchantid: merchantId,
+        p_subaccountid: subaccountid,
+        p_quidlyuserid: quidlyUserId,
+        p_bankid: bankid,
+        p_bankaccountno: cleanBankAccountNo,
+        p_bankid_old: bankidOld,
+        p_bankaccountno_old: cleanOldBankAccountNo,
+        p_banksortcode: cleanSortCode
       })
 
       const response = await SubaccountService.updateSubaccount({
@@ -251,10 +150,10 @@ export const useSubaccountStore = defineStore('subaccount', () => {
         p_subaccountid: subaccountid,
         p_quidlyuserid: quidlyUserId,
         p_bankid: bankid,
-        p_bankaccountno: String(bankaccountno).trim(),
+        p_bankaccountno: cleanBankAccountNo,
         p_bankid_old: bankidOld,
-        p_bankaccountno_old: String(bankaccountnoOld).trim(),
-        p_banksortcode: String(banksortcode).trim()
+        p_bankaccountno_old: cleanOldBankAccountNo,
+        p_banksortcode: cleanSortCode
       })
 
       await fetchSubaccounts()
@@ -262,6 +161,42 @@ export const useSubaccountStore = defineStore('subaccount', () => {
       return response
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Failed to update subaccount'
+
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // --------------------------------------------------
+  // Update Subaccount Status
+  //
+  // 1  = Active
+  // 0  = Inactive
+  // 99 = Deleted
+  // --------------------------------------------------
+
+  async function updateSubaccountStatus(subaccountid: string, status: number) {
+    loading.value = true
+    error.value = null
+
+    try {
+      if (!subaccountid) {
+        throw new Error('Subaccount ID is required')
+      }
+
+      console.log('🗑️ STATUS UPDATE:', {
+        subaccountid,
+        status
+      })
+
+      const response = await SubaccountService.updateSubaccountStatus(subaccountid, status)
+
+      await fetchSubaccounts()
+
+      return response
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Failed to update subaccount status'
 
       throw err
     } finally {
@@ -281,8 +216,10 @@ export const useSubaccountStore = defineStore('subaccount', () => {
 
     filteredSubaccounts,
     totalSubaccounts,
+
     fetchSubaccounts,
     addSubaccount,
-    updateSubaccount
+    updateSubaccount,
+    updateSubaccountStatus
   }
 })

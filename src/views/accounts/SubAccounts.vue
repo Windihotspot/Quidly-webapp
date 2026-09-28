@@ -22,17 +22,6 @@ const { fetchSubaccounts, addSubaccount, updateSubaccount, updateSubaccountStatu
 // Shared Swal helpers
 // --------------------------------------------------
 
-function notifySuccess(text: string) {
-  Swal.fire({
-    text,
-    icon: 'success',
-    buttonsStyling: false,
-    confirmButtonText: 'Ok, got it!',
-    heightAuto: false,
-    customClass: { confirmButton: 'btn btn-primary' }
-  })
-}
-
 function notifyError(err: unknown, fallback: string) {
   Swal.fire({
     text: err instanceof Error ? err.message : fallback,
@@ -161,8 +150,6 @@ const addForm = ref({
   accountNumber: '',
   name: ''
 })
-
-const savingAdd = ref(false)
 
 // --------------------------------------------------
 // Edit form
@@ -349,8 +336,6 @@ async function saveAccountChanges() {
 // Toggle active / inactive
 // --------------------------------------------------
 
-const togglingAccountId = ref<string | null>(null)
-
 async function toggleAccountStatus(account: any) {
   if (!account?.subaccountid || changingStatus.value === account.subaccountid) {
     return
@@ -381,8 +366,6 @@ async function toggleAccountStatus(account: any) {
 // --------------------------------------------------
 // Delete sub-account
 // --------------------------------------------------
-
-const deletingAccount = ref(false)
 
 function openDeleteAccountModal(account: any) {
   if (!account?.subaccountid) {
@@ -1153,7 +1136,6 @@ onMounted(async () => {
                 placeholder="Search by bank name"
                 :loading="bankLoading"
                 :disabled="bankLoading || savingAdd"
-                :disabled="bankLoading || savingAdd"
                 :custom-filter="bankFilter"
                 clearable
                 hide-details
@@ -1409,7 +1391,6 @@ onMounted(async () => {
               type="button"
               class="rounded-xl border border-slate-200 bg-white px-5 py-2.5 text-sm font-medium text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
               :disabled="savingAdd"
-              :disabled="savingAdd"
               @click="closeAddModal"
             >
               Discard
@@ -1421,7 +1402,6 @@ onMounted(async () => {
               :disabled="savingAdd || !addForm.bank || !addForm.accountNumber || !addForm.name"
               @click="submitAddSubaccount"
             >
-              {{ savingAdd ? 'Submitting...' : 'Submit' }}
               {{ savingAdd ? 'Submitting...' : 'Submit' }}
             </button>
           </div>

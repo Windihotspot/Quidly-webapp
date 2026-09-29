@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   sendSignupOTP,
@@ -251,8 +251,61 @@ const features = [
 
 const currentYear = new Date().getFullYear()
 
+// ---------- Carousel (left column) ----------
+// Adjust file names/paths to match what's in your assets folder
+import slide1 from '@/assets/images/biz1.jpg'
+import slide2 from '@/assets/images/biz3.jpg'
+import slide3 from '@/assets/images/biz4.jpg'
+
+const slides = [
+  {
+    image: slide1,
+    title: 'Payments that keep your business moving.',
+    subtitle: 'Accept payments securely and stay in control from one place.'
+  },
+  {
+    image: slide2,
+    title: 'Real-time visibility.',
+    subtitle: 'Track every transaction as it happens with powerful business tools.'
+  },
+  {
+    image: slide3,
+    title: 'Easy onboarding.',
+    subtitle: 'Create your merchant profile and start collecting payments in minutes.'
+  }
+]
+
+const currentSlide = ref(0)
+let slideTimer = null
+
+function goToSlide(index) {
+  currentSlide.value = index
+  startSlideTimer() // restart the timer so it doesn't jump right after a click
+}
+
+function nextSlide() {
+  currentSlide.value = (currentSlide.value + 1) % slides.length
+}
+
+function startSlideTimer() {
+  stopSlideTimer()
+  slideTimer = setInterval(nextSlide, 5000)
+}
+
+function stopSlideTimer() {
+  if (slideTimer) {
+    clearInterval(slideTimer)
+    slideTimer = null
+  }
+}
+
+onMounted(() => {
+  startSlideTimer()
+})
+
 onBeforeUnmount(() => {
   clearResendTimer()
+  stopSlideTimer()
 })
 </script>
 
@@ -261,57 +314,62 @@ onBeforeUnmount(() => {
     class="min-h-screen w-full grid grid-cols-1 lg:grid-cols-2 bg-gradient-to-br from-lime-50 via-white to-sky-50"
   >
     <!-- ===================== LEFT COLUMN ===================== -->
-    <div
-      class="relative flex mx-auto my-auto flex-col justify-between px-6 sm:px-10 lg:px-16 py-8 lg:py-12 overflow-hidden"
-    >
-      <!-- Logo -->
-      <div>
-        <img src="../assets/images/quidly-logo.png" class="w-20 h-30" alt="" />
-      </div>
+   <!-- ===================== LEFT COLUMN (CAROUSEL) ===================== -->
+<div
+  class="relative h-64 sm:h-80 lg:h-auto lg:min-h-screen overflow-hidden bg-gray-900"
+  @mouseenter="stopSlideTimer"
+  @mouseleave="startSlideTimer"
+>
+  <!-- Slides (cross-fade) -->
+  <img
+    v-for="(slide, i) in slides"
+    :key="i"
+    :src="slide.image"
+    :alt="slide.title"
+    class="absolute inset-0 h-full w-full object-cover transition-opacity duration-1000 ease-in-out"
+    :class="i === currentSlide ? 'opacity-100' : 'opacity-0'"
+  />
 
-      <!-- Hero content -->
-      <div class="mt-10 lg:mt-0 max-w-xl">
-        <div
-          class="inline-flex items-center gap-2 rounded-full bg-white/70 backdrop-blur px-4 py-1.5 text-xs sm:text-sm font-semibold text-gray-700 shadow-sm"
-        >
-          <span class="h-2 w-2 rounded-full bg-green-500"></span>
-          Simple. Secure. Built for business.
-        </div>
+  <!-- Dark gradient so text stays readable -->
+  <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-black/30"></div>
 
-        <h1
-          class="mt-6 text-4xl sm:text-5xl lg:text-6xl font-extrabold leading-[1.05] tracking-tight text-gray-900"
-        >
-          Payments that keep your <span class="text-green-500">business</span>
-          <span class="text-sky-500">moving.</span>
+  <!-- Logo -->
+  <div class="absolute top-6 left-6 sm:left-10 z-10">
+    <img src="@/assets/images/quidly-logo.png" class="w-20" alt="Quidly" />
+  </div>
+
+  <!-- Caption + indicators -->
+  <div class="absolute inset-x-0 bottom-0 z-10 px-6 sm:px-10 lg:px-16 pb-8 lg:pb-12 text-center">
+    <div class="relative h-28 sm:h-32">
+      <div
+        v-for="(slide, i) in slides"
+        :key="i"
+        class="absolute inset-0 flex flex-col items-center justify-end transition-all duration-700 ease-in-out"
+        :class="i === currentSlide ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-3 pointer-events-none'"
+      >
+        <h1 class="text-2xl sm:text-3xl lg:text-4xl font-extrabold leading-tight text-white max-w-xl">
+          {{ slide.title }}
         </h1>
-
-        <p class="mt-6 text-base sm:text-lg text-gray-600 max-w-md">
-          Access your Quidly workspace, manage payments and stay in control of your business from
-          one secure place.
+        <p class="mt-3 text-sm sm:text-base text-white/80 max-w-md">
+          {{ slide.subtitle }}
         </p>
-
-        <!-- Feature pills -->
-        <div class="mt-8 flex flex-wrap gap-3">
-          <div
-            v-for="f in features"
-            :key="f.label"
-            class="inline-flex items-center gap-2 rounded-full bg-white/80 backdrop-blur px-4 py-2 text-xs sm:text-sm font-semibold text-gray-800 shadow-sm"
-          >
-            <v-icon :icon="f.icon" size="14" class="text-green-600" />
-            {{ f.label }}
-          </div>
-        </div>
-      </div>
-
-      <!-- Footer -->
-      <div class="mt-10 lg:mt-0 flex items-center justify-between text-xs text-gray-500">
-        <span>© {{ currentYear }} Quidly</span>
-        <span class="hidden sm:inline-flex items-center gap-1.5">
-          <span class="h-1.5 w-1.5 rounded-full bg-green-500"></span>
-          Secure authentication
-        </span>
       </div>
     </div>
+
+    <!-- Indicators -->
+    <div class="mt-6 flex items-center justify-center gap-2">
+      <button
+        v-for="(slide, i) in slides"
+        :key="i"
+        type="button"
+        :aria-label="`Go to slide ${i + 1}`"
+        class="h-1.5 rounded-full transition-all duration-300"
+        :class="i === currentSlide ? 'w-14 bg-white' : 'w-6 bg-white/50 hover:bg-white/80'"
+        @click="goToSlide(i)"
+      ></button>
+    </div>
+  </div>
+</div>
 
     <!-- ===================== RIGHT COLUMN ===================== -->
     <div

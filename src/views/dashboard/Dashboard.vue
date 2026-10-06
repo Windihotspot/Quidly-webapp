@@ -671,76 +671,80 @@ const fetchQuarterlyTransactions = async () => {
   }
 }
 
-// const fetchLatestTransactions = async () => {
-//   try {
-//     const { data } = await ApiService.post('/txdb/procedure/dashboard_getLatestTransactions', {
-//       p_merchantid: merchantId
-//     })
-
-//     console.log('Latest transactions response:', data)
-
-//     if (data.status !== 1 || !Array.isArray(data.jsresult)) {
-//       return
-//     }
-
-//     transactions.value = data.jsresult.map(
-//       (item: any): RecentTransaction => ({
-//         id: String(item.id ?? item.transaction_id ?? item.txid ?? ''),
-
-//         date: item.date ?? item.transaction_date ?? item.created_at ?? '',
-
-//         amount: Number(item.amount ?? item.transaction_value ?? item.transaction_amount ?? 0) / 100,
-
-//         status: normalizeTransactionStatus(item.status),
-
-//         reference: item.reference ?? item.transaction_reference ?? item.reference_number ?? ''
-//       })
-//     )
-//   } catch (error) {
-//     console.error('Failed to fetch latest transactions:', error)
-//   }
-// }
-
 const fetchLatestTransactions = async () => {
   try {
-    console.log('Merchant ID:', merchantId)
+    const { data } = await ApiService.post('/txdb/procedure/dashboard_getLatestTransactions', {
+      p_merchantid: merchantId
+    })
 
-    const response = await ApiService.post(
-      '/txdb/procedure/dashboard_getLatestTransactions',
-      {
-        p_merchantid: merchantId
-      }
-    )
-
-    console.log('Full API response:', response)
-    console.log('Response data:', response.data)
-
-    const data = response.data
+    console.log('Latest transactions response:', data)
 
     if (data.status !== 1 || !Array.isArray(data.jsresult)) {
-      console.warn('Unexpected response structure:', data)
       return
     }
 
     transactions.value = data.jsresult.map(
       (item: any): RecentTransaction => ({
         id: String(item.id ?? item.transaction_id ?? item.txid ?? ''),
+
         date: item.date ?? item.transaction_date ?? item.created_at ?? '',
-        amount: Number(
-          item.amount ?? item.transaction_value ?? item.transaction_amount ?? 0
-        ) / 100,
+
+        amount: Number(item.amount ?? item.transaction_value ?? item.transaction_amount ?? 0) / 100,
+
         status: normalizeTransactionStatus(item.status),
-        reference:
-          item.reference ??
-          item.transaction_reference ??
-          item.reference_number ??
-          ''
+
+        reference: item.reference ?? item.transaction_reference ?? item.reference_number ?? ''
       })
     )
   } catch (error) {
     console.error('Failed to fetch latest transactions:', error)
   }
 }
+
+
+
+
+
+// const fetchLatestTransactions = async () => {
+//   try {
+//     console.log('Merchant ID:', merchantId)
+
+//     const response = await ApiService.post(
+//       '/txdb/procedure/dashboard_getLatestTransactions',
+//       {
+//         p_merchantid: merchantId
+//       }
+//     )
+
+//     console.log('Full API response:', response)
+//     console.log('Response data:', response.data)
+
+//     const data = response.data
+
+//     if (data.status !== 1 || !Array.isArray(data.jsresult)) {
+//       console.warn('Unexpected response structure:', data)
+//       return
+//     }
+
+//     transactions.value = data.jsresult.map(
+//       (item: any): RecentTransaction => ({
+//         id: String(item.id ?? item.transaction_id ?? item.txid ?? ''),
+//         date: item.date ?? item.transaction_date ?? item.created_at ?? '',
+//         amount: Number(
+//           item.amount ?? item.transaction_value ?? item.transaction_amount ?? 0
+//         ) / 100,
+//         status: normalizeTransactionStatus(item.status),
+//         reference:
+//           item.reference ??
+//           item.transaction_reference ??
+//           item.reference_number ??
+//           ''
+//       })
+//     )
+//   } catch (error) {
+//     console.error('Failed to fetch latest transactions:', error)
+//   }
+// }
 
 
 

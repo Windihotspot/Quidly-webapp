@@ -77,7 +77,7 @@ function formatFileSize(bytes: number) {
         ========================================================== -->
         <section class="grid grid-cols-1 gap-5 lg:grid-cols-2">
           <CompanyVerificationKyc
-            :user-data="userData"
+            
             :business-name="businessName"
             :registration-number="registrationNumber"
             @uploaded="refreshKYC"

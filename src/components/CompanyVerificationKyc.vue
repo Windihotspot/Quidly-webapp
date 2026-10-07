@@ -7,17 +7,11 @@
     ========================================================== -->
     <div class="flex items-start justify-between gap-4">
       <div class="flex min-w-0 gap-4">
-
         <!-- Icon -->
         <div
           class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600"
         >
-          <svg
-            class="h-5 w-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -28,9 +22,7 @@
         </div>
 
         <div>
-          <h2 class="text-base font-bold text-slate-900">
-            Company Verification
-          </h2>
+          <h2 class="text-base font-bold text-slate-900">Company Verification</h2>
 
           <p class="mt-1 text-xs leading-5 text-slate-500">
             Verify your business information and registration documents.
@@ -51,13 +43,8 @@
          BUSINESS INFORMATION
     ========================================================== -->
     <div class="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
-
       <div class="rounded-lg bg-slate-50 p-4">
-        <p
-          class="text-[10px] font-bold uppercase tracking-wider text-slate-400"
-        >
-          Business Name
-        </p>
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">Business Name</p>
 
         <p class="mt-2 truncate text-sm font-semibold text-slate-800">
           {{ businessName || 'Not provided' }}
@@ -65,9 +52,7 @@
       </div>
 
       <div class="rounded-lg bg-slate-50 p-4">
-        <p
-          class="text-[10px] font-bold uppercase tracking-wider text-slate-400"
-        >
+        <p class="text-[10px] font-bold uppercase tracking-wider text-slate-400">
           Registration Number
         </p>
 
@@ -75,7 +60,6 @@
           {{ registrationNumber || 'Not provided' }}
         </p>
       </div>
-
     </div>
 
     <!-- =========================================================
@@ -85,16 +69,8 @@
       class="flex flex-col gap-3 rounded-lg border border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between"
     >
       <div class="flex items-center gap-3">
-
-        <div
-          class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600"
-        >
-          <svg
-            class="h-4 w-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+        <div class="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -105,15 +81,12 @@
         </div>
 
         <div>
-          <p class="text-sm font-semibold text-slate-800">
-            Company Registration
-          </p>
+          <p class="text-sm font-semibold text-slate-800">Company Registration</p>
 
           <p class="mt-0.5 max-w-[180px] truncate text-xs text-slate-500">
             {{ documentName || 'Document not uploaded' }}
           </p>
         </div>
-
       </div>
 
       <span
@@ -137,47 +110,19 @@
       :disabled="uploading"
       @click="openModal"
     >
-      <svg
-        v-if="!uploading"
-        class="h-4 w-4"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d="M12 4v16m8-8H4"
-        />
+      <svg v-if="!uploading" class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
       </svg>
 
-      <svg
-        v-else
-        class="h-4 w-4 animate-spin"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <circle
-          class="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          stroke-width="4"
-        />
+      <svg v-else class="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
 
-        <path
-          class="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
-        />
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
       </svg>
 
       {{ uploading ? 'Uploading...' : documentUploaded ? 'Update Documents' : 'Upload Documents' }}
     </button>
   </article>
-
 
   <!-- =========================================================
        COMPANY DOCUMENT MODAL
@@ -188,17 +133,11 @@
       class="fixed inset-0 z-[999] flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-sm"
       @click.self="closeModal"
     >
-
-      <div
-        class="w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-2xl"
-      >
-
+      <div class="w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-2xl">
         <!-- Modal Header -->
         <div class="flex items-center justify-between border-b border-slate-100 px-6 py-5">
           <div>
-            <h3 class="text-lg font-bold text-slate-900">
-              Company Registration
-            </h3>
+            <h3 class="text-lg font-bold text-slate-900">Company Registration</h3>
 
             <p class="mt-1 text-xs text-slate-500">
               Upload your official company registration document.
@@ -210,12 +149,7 @@
             class="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
             @click="closeModal"
           >
-            <svg
-              class="h-5 w-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -226,14 +160,11 @@
           </button>
         </div>
 
-
         <!-- Modal Body -->
         <div class="space-y-5 p-6">
-
           <!-- Information -->
           <div class="rounded-lg border border-blue-100 bg-blue-50 p-4">
             <div class="flex gap-3">
-
               <svg
                 class="mt-0.5 h-5 w-5 shrink-0 text-blue-600"
                 fill="none"
@@ -249,23 +180,17 @@
               </svg>
 
               <div>
-                <p class="text-sm font-semibold text-blue-800">
-                  Accepted documents
-                </p>
+                <p class="text-sm font-semibold text-blue-800">Accepted documents</p>
 
                 <p class="mt-1 text-xs leading-5 text-blue-700">
-                  Upload your CAC certificate or other official company
-                  registration document.
+                  Upload your CAC certificate or other official company registration document.
                 </p>
               </div>
-
             </div>
           </div>
 
-
           <!-- File Upload -->
           <div>
-
             <label class="mb-2 block text-sm font-semibold text-slate-700">
               Company Registration Document
               <span class="text-red-500">*</span>
@@ -284,16 +209,10 @@
               class="flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 px-6 py-8 text-center transition hover:border-blue-300 hover:bg-blue-50/50"
               @click="fileInput?.click()"
             >
-
               <div
                 class="mb-3 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50 text-blue-600"
               >
-                <svg
-                  class="h-6 w-6"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -307,30 +226,18 @@
                 {{ selectedFile ? selectedFile.name : 'Click to upload document' }}
               </p>
 
-              <p class="mt-1 text-xs text-slate-400">
-                PDF, JPG or JPEG • Maximum 1MB
-              </p>
-
+              <p class="mt-1 text-xs text-slate-400">PDF, JPG or JPEG • Maximum 1MB</p>
             </button>
 
             <!-- Validation -->
-            <p
-              v-if="fileError"
-              class="mt-2 text-xs font-medium text-red-500"
-            >
+            <p v-if="fileError" class="mt-2 text-xs font-medium text-red-500">
               {{ fileError }}
             </p>
-
           </div>
-
         </div>
 
-
         <!-- Modal Footer -->
-        <div
-          class="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4"
-        >
-
+        <div class="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
           <button
             type="button"
             class="rounded-lg bg-white px-5 py-2.5 text-sm font-semibold text-slate-600 ring-1 ring-inset ring-slate-200 transition hover:bg-slate-100"
@@ -347,39 +254,26 @@
           >
             {{ uploading ? 'Uploading...' : 'Submit Document' }}
           </button>
-
         </div>
-
       </div>
     </div>
   </Teleport>
 </template>
 
-
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import Swal from 'sweetalert2'
 import ApiService from '../services/api/api.service'
+import { useAuthStore } from '@/stores/auth'
+import { storeToRefs } from 'pinia'
 
-interface UserData {
-  accountid?: string
-  merchantid?: string
-  quidlyuserid?: string
-}
+const authStore = useAuthStore()
 
-interface Props {
-  userData?: UserData | null
-  businessName?: string
-  registrationNumber?: string
-  existingDocumentName?: string
-}
+const { user } = storeToRefs(authStore)
 
-const props = withDefaults(defineProps<Props>(), {
-  userData: null,
-  businessName: '',
-  registrationNumber: '',
-  existingDocumentName: ''
-})
+const merchantId = 'Qde9b16d0d8'
+
+
 
 const emit = defineEmits<{
   uploaded: []
@@ -391,7 +285,8 @@ const selectedFile = ref<File | null>(null)
 const fileError = ref('')
 const uploading = ref(false)
 
-const documentName = ref(props.existingDocumentName)
+// const documentName = ref(props.existingDocumentName)
+const documentName = ref()
 
 const documentUploaded = computed(() => {
   return !!documentName.value
@@ -427,11 +322,7 @@ const handleFileChange = (event: Event) => {
 
   const file = target.files[0]
 
-  const validTypes = [
-    'application/pdf',
-    'image/jpeg',
-    'image/jpg'
-  ]
+  const validTypes = ['application/pdf', 'image/jpeg', 'image/jpg']
 
   if (!validTypes.includes(file.type)) {
     fileError.value = 'Only PDF, JPG and JPEG files are allowed.'
@@ -456,7 +347,7 @@ const uploadDocument = async () => {
     return
   }
 
-  if (!props.userData) {
+  if (!user.value) {
     fileError.value = 'User information is not available.'
     return
   }
@@ -465,21 +356,22 @@ const uploadDocument = async () => {
 
   try {
     const requestData = {
-      p_accountid: props.userData.accountid ?? '',
-      p_merchantid: props.userData.merchantid ?? '',
-      p_quidlyuserid: props.userData.quidlyuserid ?? '',
-      businessdocument: selectedFile.value
+      p_accountId: user.value.accountid ?? '',
+      p_merchantId: merchantId ?? '',
+      p_quidlyuserId: user.value.quidlyuserid ?? '',
+      // businessdocument: selectedFile.value
     }
 
-    const { data } = await ApiService.multipartPost(
-      '/uploadCompanyDocuments',
-      requestData
-    )
+    console.log('request data:', requestData)
+
+    const { data } = await ApiService.post('/uploadCompanyDocuments', {
+      p_requestData: requestData
+    })
+ 
+    console.log('upload response:', data)
 
     if (data?.status !== 1) {
-      throw new Error(
-        data?.message || 'Unable to upload company document.'
-      )
+      throw new Error(data?.message || 'Unable to upload company document.')
     }
 
     documentName.value = selectedFile.value.name
@@ -494,7 +386,6 @@ const uploadDocument = async () => {
     emit('uploaded')
 
     closeModal()
-
   } catch (error: any) {
     console.error('Company document upload failed:', error)
 
@@ -507,7 +398,6 @@ const uploadDocument = async () => {
         'Unable to upload the document. Please try again.',
       confirmButtonColor: '#2563eb'
     })
-
   } finally {
     uploading.value = false
   }

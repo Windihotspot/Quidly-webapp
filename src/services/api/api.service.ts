@@ -146,6 +146,25 @@ export async function postFormData<T = any>(url: string, data: FormData, config?
   })
 }
 
+
+export async function multipartPost<T = any>(
+  url: string,
+  data: FormData,
+  config?: any
+) {
+  const client = getApiClient()
+
+  return client.post<T>(url, data, {
+    ...config,
+    headers: {
+      'Content-Type': 'multipart/form-data',
+      ...config?.headers
+    }
+  })
+}
+
+
+
 export default {
   initializeApiClient,
   getApiClient,
@@ -153,5 +172,6 @@ export default {
   post,
   put,
   del,
-  postFormData
+  postFormData,
+  multipartPost
 }

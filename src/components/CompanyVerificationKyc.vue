@@ -339,6 +339,7 @@ const handleFileChange = (event: Event) => {
   selectedFile.value = file
 }
 
+
 const uploadDocument = async () => {
   fileError.value = ''
 
@@ -355,23 +356,41 @@ const uploadDocument = async () => {
   uploading.value = true
 
   try {
-    const requestData = {
-      p_accountId: user.value.accountid ?? '',
-      p_merchantId: merchantId ?? '',
-      p_quidlyuserId: user.value.quidlyuserid ?? '',
-      // businessdocument: selectedFile.value
-    }
+    const formData = new FormData()
 
-    console.log('request data:', requestData)
+    formData.append(
+      'p_accountid',
+      user.value.accountid ?? ''
+    )
 
-    const { data } = await ApiService.post('/uploadCompanyDocuments', {
-      p_requestData: requestData
-    })
- 
+    formData.append(
+      'p_merchantid',
+      user.value.merchantid ?? ''
+    )
+
+    formData.append(
+      'p_quidlyuserid',
+      user.value.quidlyuserid ?? ''
+    )
+
+    formData.append(
+      'businessdocument',
+      selectedFile.value
+    )
+
+    console.log('FormData:', formData)
+
+    const { data } = await ApiService.multipartPost(
+      '/uploadCompanyDocuments',
+      formData
+    )
+
     console.log('upload response:', data)
 
     if (data?.status !== 1) {
-      throw new Error(data?.message || 'Unable to upload company document.')
+      throw new Error(
+        data?.message || 'Unable to upload company document.'
+      )
     }
 
     documentName.value = selectedFile.value.name
@@ -384,8 +403,8 @@ const uploadDocument = async () => {
     })
 
     emit('uploaded')
-
     closeModal()
+
   } catch (error: any) {
     console.error('Company document upload failed:', error)
 
@@ -398,8 +417,10 @@ const uploadDocument = async () => {
         'Unable to upload the document. Please try again.',
       confirmButtonColor: '#2563eb'
     })
+
   } finally {
     uploading.value = false
   }
 }
+
 </script>

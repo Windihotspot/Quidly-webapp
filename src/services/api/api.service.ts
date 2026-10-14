@@ -135,16 +135,16 @@ export async function del<T = any>(url: string, config?: any) {
 /**
  * Convenience method for multipart POST requests
  */
-export async function postFormData<T = any>(url: string, data: FormData, config?: any) {
-  const client = getApiClient()
-  return client.post<T>(url, data, {
-    ...config,
-    headers: {
-      'Content-Type': 'multipart/form-data',
-      ...config?.headers
-    }
-  })
-}
+// export async function postFormData<T = any>(url: string, data: FormData, config?: any) {
+//   const client = getApiClient()
+//   return client.post<T>(url, data, {
+//     ...config,
+//     headers: {
+//       'Content-Type': 'multipart/form-data',
+//       ...config?.headers
+//     }
+//   })
+// }
 
 
 export async function multipartPost<T = any>(
@@ -172,6 +172,6 @@ export default {
   post,
   put,
   del,
-  postFormData,
+  // postFormData,
   multipartPost
 }

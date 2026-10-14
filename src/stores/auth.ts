@@ -40,7 +40,7 @@ export const useAuthStore = defineStore(
     const quidlyUserId = computed(() => user.value?.quidlyuserid)
 
     // Currently selected merchant with full merchant details
-    const activeMerchant = computed<IMerchant | null>(() => {
+    const activeMerchant = computed<IMerchant | null>(() => { 
       if (!activeMerchantId.value) return null
 
       return (

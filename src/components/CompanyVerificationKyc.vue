@@ -271,9 +271,12 @@ const authStore = useAuthStore()
 
 const { user } = storeToRefs(authStore)
 
+// const activeMerchantId = ref<string | null>(
+//   localStorage.getItem('activeMerchantId')
+// )
+
+// const merchantId = activeMerchantId.value
 const merchantId = 'Qde9b16d0d8'
-
-
 
 const emit = defineEmits<{
   uploaded: []
@@ -339,7 +342,6 @@ const handleFileChange = (event: Event) => {
   selectedFile.value = file
 }
 
-
 const uploadDocument = async () => {
   fileError.value = ''
 
@@ -358,39 +360,22 @@ const uploadDocument = async () => {
   try {
     const formData = new FormData()
 
-    formData.append(
-      'p_accountid',
-      user.value.accountid ?? ''
-    )
+    formData.append('p_accountid', user.value.accountid ?? '')
 
-    formData.append(
-      'p_merchantid',
-      user.value.merchantid ?? ''
-    )
+    formData.append('p_merchantid', merchantId ?? '')
 
-    formData.append(
-      'p_quidlyuserid',
-      user.value.quidlyuserid ?? ''
-    )
+    formData.append('p_quidlyuserid', user.value.quidlyuserid ?? '')
 
-    formData.append(
-      'businessdocument',
-      selectedFile.value
-    )
+    formData.append('businessdocument', selectedFile.value)
 
     console.log('FormData:', formData)
 
-    const { data } = await ApiService.multipartPost(
-      '/uploadCompanyDocuments',
-      formData
-    )
+    const { data } = await ApiService.multipartPost('/uploadCompanyDocuments', formData)
 
     console.log('upload response:', data)
 
     if (data?.status !== 1) {
-      throw new Error(
-        data?.message || 'Unable to upload company document.'
-      )
+      throw new Error(data?.message || 'Unable to upload company document.')
     }
 
     documentName.value = selectedFile.value.name
@@ -404,9 +389,13 @@ const uploadDocument = async () => {
 
     emit('uploaded')
     closeModal()
-
   } catch (error: any) {
-    console.error('Company document upload failed:', error)
+    console.error('Upload failed:', {
+      message: error.message,
+      status: error.response?.status,
+      response: error.response?.data,
+      payloadKeys: Array.from('formData')
+    })
 
     await Swal.fire({
       icon: 'error',
@@ -417,10 +406,8 @@ const uploadDocument = async () => {
         'Unable to upload the document. Please try again.',
       confirmButtonColor: '#2563eb'
     })
-
   } finally {
     uploading.value = false
   }
 }
-
 </script>

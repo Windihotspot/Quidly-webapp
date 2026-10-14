@@ -198,6 +198,7 @@
 
             <input
               ref="fileInput"
+              
               type="file"
               class="hidden"
               accept=".pdf,.jpg,.jpeg"
@@ -269,14 +270,16 @@ import { storeToRefs } from 'pinia'
 
 const authStore = useAuthStore()
 
-const { user } = storeToRefs(authStore)
+const { user, activeMerchantId } = storeToRefs(authStore)
 
 // const activeMerchantId = ref<string | null>(
 //   localStorage.getItem('activeMerchantId')
 // )
 
 // const merchantId = activeMerchantId.value
-const merchantId = 'Qde9b16d0d8'
+// const merchantId = 'Qde9b16d0d8'
+
+const merchantId = computed(() => authStore.activeMerchantId)
 
 const emit = defineEmits<{
   uploaded: []
@@ -342,72 +345,228 @@ const handleFileChange = (event: Event) => {
   selectedFile.value = file
 }
 
+// const uploadDocument = async () => {
+//   fileError.value = ''
+
+//   if (!selectedFile.value) {
+//     fileError.value = 'Please select a company registration document.'
+//     return
+//   }
+
+//   if (!user.value) {
+//     fileError.value = 'User information is not available.'
+//     return
+//   }
+
+//   uploading.value = true
+
+//   try {
+//     const formData = new FormData()
+
+//     formData.append('p_accountid', user.value.accountid ?? '')
+
+//     formData.append('p_merchantid', merchantId.value ?? '')
+
+//     formData.append('p_quidlyuserid', user.value.quidlyuserid ?? '')
+
+//     formData.append('businessdocument', selectedFile.value)
+
+//     console.log('FormData:', formData)
+
+//     const { data } = await ApiService.multipartPost('/uploadCompanyDocuments', formData)
+
+//     console.log('upload response:', data)
+
+//     if (data?.status !== 1) {
+//       throw new Error(data?.message || 'Unable to upload company document.')
+//     }
+
+//     documentName.value = selectedFile.value.name
+
+//     await Swal.fire({
+//       icon: 'success',
+//       title: 'Document Uploaded',
+//       text: 'Your company registration document has been submitted successfully.',
+//       confirmButtonColor: '#2563eb'
+//     })
+
+//     emit('uploaded')
+//     closeModal()
+//   } catch (error: any) {
+//     console.error('Upload failed:', {
+//       message: error.message,
+//       status: error.response?.status,
+//       response: error.response?.data,
+//       payloadKeys: Array.from('formData')
+//     })
+
+//     await Swal.fire({
+//       icon: 'error',
+//       title: 'Upload Failed',
+//       text:
+//         error?.response?.data?.message ||
+//         error?.message ||
+//         'Unable to upload the document. Please try again.',
+//       confirmButtonColor: '#2563eb'
+//     })
+//   } finally {
+//     uploading.value = false
+//   }
+// }
+
+
+
+// const uploadDocument = async () => {
+//   fileError.value = ''
+
+//   if (!selectedFile.value) {
+//     fileError.value = 'Please select a company registration document.'
+//     return
+//   }
+
+//   const accountId = user.value?.accountid
+//   const quidlyUserId = user.value?.quidlyuserid
+//   const merchantId = activeMerchantId.value
+
+//   if (!accountId || !quidlyUserId || !merchantId) {
+//     console.error('Missing upload identifiers:', {
+//       hasUser: !!user.value,
+//       accountId,
+//       quidlyUserId,
+//       merchantId
+//     })
+
+//     fileError.value =
+//       'Your account or merchant information is incomplete. Please refresh and try again.'
+
+//     return
+//   }
+
+//   uploading.value = true
+
+//   try {
+//     const formData = new FormData()
+
+//     formData.append('p_accountid', accountId)
+//     formData.append('p_merchantid', merchantId)
+//     formData.append('p_quidlyuserid', quidlyUserId)
+//     formData.append('businessdocument', selectedFile.value)
+
+//     console.log(formData)
+
+//     // Inspect the actual payload before sending it.
+//     for (const [key, value] of formData.entries()) {
+//       console.log(
+//         `Upload field: ${key}`,
+//         value instanceof File
+//           ? {
+//               name: value.name,
+//               type: value.type,
+//               size: value.size
+//             }
+//           : value
+//       )
+//     }
+
+//     const { data } = await ApiService.multipartPost(
+//       '/uploadCompanyDocuments',
+//       formData
+//     )
+
+//     console.log('Upload response:', data)
+
+//     if (data?.status !== 1) {
+//       throw new Error(
+//         data?.message || 'Unable to upload company document.'
+//       )
+//     }
+
+//     documentName.value = selectedFile.value.name
+
+//     await Swal.fire({
+//       icon: 'success',
+//       title: 'Document Uploaded',
+//       text: 'Your company registration document has been submitted successfully.',
+//       confirmButtonColor: '#2563eb'
+//     })
+
+//     emit('uploaded')
+//     closeModal()
+//   } catch (error: any) {
+//     console.error('Company document upload failed:', {
+//       message: error?.message,
+//       status: error?.response?.status,
+//       response: error?.response?.data,
+//       url: error?.config?.url,
+//       method: error?.config?.method
+//     })
+
+//     await Swal.fire({
+//       icon: 'error',
+//       title: 'Upload Failed',
+//       text:
+//         error?.response?.data?.message ||
+//         error?.message ||
+//         'Unable to upload the document. Please try again.',
+//       confirmButtonColor: '#2563eb'
+//     })
+//   } finally {
+//     uploading.value = false
+//   }
+// }
+
+
+
 const uploadDocument = async () => {
-  fileError.value = ''
-
   if (!selectedFile.value) {
-    fileError.value = 'Please select a company registration document.'
+    fileError.value = 'Please select a company document.'
     return
   }
 
-  if (!user.value) {
-    fileError.value = 'User information is not available.'
-    return
+  const payload = {
+    p_accountid: user.value?.accountid ?? '',
+    p_merchantid: activeMerchantId.value ?? '',
+    p_quidlyuserid: user.value?.quidlyuserid ?? '',
+    businessdocument: selectedFile.value
   }
-
-  uploading.value = true
 
   try {
-    const formData = new FormData()
+    uploading.value = true
 
-    formData.append('p_accountid', user.value.accountid ?? '')
-
-    formData.append('p_merchantid', merchantId ?? '')
-
-    formData.append('p_quidlyuserid', user.value.quidlyuserid ?? '')
-
-    formData.append('businessdocument', selectedFile.value)
-
-    console.log('FormData:', formData)
-
-    const { data } = await ApiService.multipartPost('/uploadCompanyDocuments', formData)
-
-    console.log('upload response:', data)
+    const { data } = await ApiService.multipartPost(
+      '/uploadCompanyDocuments',
+      payload
+    )
 
     if (data?.status !== 1) {
-      throw new Error(data?.message || 'Unable to upload company document.')
+      throw new Error(data?.message || 'Document upload failed.')
     }
-
-    documentName.value = selectedFile.value.name
 
     await Swal.fire({
       icon: 'success',
-      title: 'Document Uploaded',
-      text: 'Your company registration document has been submitted successfully.',
-      confirmButtonColor: '#2563eb'
+      title: 'Success',
+      text: 'Company document uploaded successfully.'
     })
 
-    emit('uploaded')
     closeModal()
+    emit('uploaded')
   } catch (error: any) {
-    console.error('Upload failed:', {
-      message: error.message,
-      status: error.response?.status,
-      response: error.response?.data,
-      payloadKeys: Array.from('formData')
-    })
+    console.error(
+      'Company document upload failed:',
+      error.response?.data ?? error
+    )
 
     await Swal.fire({
       icon: 'error',
-      title: 'Upload Failed',
+      title: 'Upload failed',
       text:
-        error?.response?.data?.message ||
-        error?.message ||
-        'Unable to upload the document. Please try again.',
-      confirmButtonColor: '#2563eb'
+        error.response?.data?.message ??
+        error.message ??
+        'Unable to upload company document.'
     })
   } finally {
     uploading.value = false
   }
 }
+
 </script>

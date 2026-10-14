@@ -147,21 +147,72 @@ export async function del<T = any>(url: string, config?: any) {
 // }
 
 
+// export async function multipartPost<T = any>(
+//   url: string,
+//   data: FormData,
+//   config?: any
+// ) {
+//   const client = getApiClient()
+
+//   return client.post<T>(url, data, {
+//     ...config,
+//     headers: {
+//       'Content-Type': 'multipart/form-data',
+//       ...config?.headers
+//     }
+//   })
+// }
+
+
+// export async function multipartPost<T = any>(
+//   url: string,
+//   data: FormData,
+//   config?: any
+// ) {
+//   const client = getApiClient()
+
+//   return client.post<T>(url, data, {
+//     ...config,
+//     headers: {
+//       ...config?.headers
+//     }
+//   })
+// }
+
+
 export async function multipartPost<T = any>(
   url: string,
-  data: FormData,
+  params: Record<string, any>,
   config?: any
 ) {
   const client = getApiClient()
+  const formData = new FormData()
 
-  return client.post<T>(url, data, {
+  Object.keys(params).forEach((key) => {
+    const value = params[key]
+
+    if (value === undefined || value === null) {
+      return
+    }
+
+    if (Array.isArray(value)) {
+      value.forEach((item, index) => {
+        formData.append(`${key}[${index}]`, item)
+      })
+    } else {
+      formData.append(key, value)
+    }
+  })
+
+  return client.post<T>(url, formData, {
     ...config,
     headers: {
-      'Content-Type': 'multipart/form-data',
       ...config?.headers
     }
   })
 }
+
+
 
 
 

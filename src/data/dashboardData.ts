@@ -13,7 +13,7 @@ export interface DashboardMetrics {
     amount: number
     change: number
     period: string
-  }
+  }   
 
   totalTransactions: number
 
